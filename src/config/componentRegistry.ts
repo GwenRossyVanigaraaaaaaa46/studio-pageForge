@@ -4,7 +4,7 @@ import HeaderElement from '@/components/page-builder/elements/HeaderElement';
 import TextElement from '@/components/page-builder/elements/TextElement';
 import ImageElement from '@/components/page-builder/elements/ImageElement';
 import DescriptionBulletElement from '@/components/page-builder/elements/DescriptionBulletElement';
-import { Heading1, Type, Image as ImageIcon, Palette, ListChecks } from 'lucide-react';
+import { Heading1, Type, Image as ImageIcon, ListChecks } from 'lucide-react';
 
 export const COMPONENT_REGISTRY: ComponentDefinition[] = [
   {
@@ -92,14 +92,14 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     name: 'Image',
     icon: ImageIcon,
     defaultProps: {
-      src: '',
+      src: '', // Will hold Data URI for uploaded images, or fallback to placeholder
       alt: 'My Awesome Image',
       width: 600,
       height: 400,
       objectFit: 'cover',
     },
     properties: [
-      { name: 'src', label: 'Image URL', type: 'url', defaultValue: '', placeholder: 'https://example.com/image.png' },
+      { name: 'src', label: 'Image File', type: 'file', defaultValue: '' },
       { name: 'alt', label: 'Alt Text', type: 'text', defaultValue: 'My Awesome Image', placeholder: 'Image description' },
       { name: 'width', label: 'Width (px)', type: 'number', defaultValue: 600, placeholder: '600' },
       { name: 'height', label: 'Height (px)', type: 'number', defaultValue: 400, placeholder: '400' },

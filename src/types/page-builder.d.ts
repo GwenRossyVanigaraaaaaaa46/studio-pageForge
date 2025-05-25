@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 import type { Control, UseFormReturn, FieldValues } from 'react-hook-form';
 
@@ -9,7 +10,7 @@ export interface ComponentPropertyOption {
 export interface ComponentProperty {
   name: string;
   label: string;
-  type: 'text' | 'textarea' | 'url' | 'number' | 'select' | 'color';
+  type: 'text' | 'textarea' | 'url' | 'number' | 'select' | 'color' | 'file'; // Added 'file' type
   defaultValue?: any;
   options?: ComponentPropertyOption[];
   placeholder?: string;

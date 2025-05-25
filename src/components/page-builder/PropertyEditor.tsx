@@ -27,7 +27,10 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
         name={name}
         control={control}
         render={({ field }) => {
-          const value = field.value ?? ''; 
+          // For file inputs, field.value will be the Data URI string or empty.
+          // The <Input type="file"> itself doesn't use `value` prop in a traditional controlled way.
+          // We only need its onChange to trigger our Data URI conversion.
+          const value = type === 'file' ? undefined : (field.value ?? '');
           const fieldProps = { ...field, placeholder, id: name, value };
           
           switch (type) {
@@ -64,6 +67,30 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                     ))}
                   </SelectContent>
                 </Select>
+              );
+            case 'file':
+              return (
+                <Input
+                  type="file"
+                  id={name}
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        field.onChange(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    } else {
+                      // Optionally handle file removal, e.g., by setting to empty string
+                      // field.onChange('');
+                    }
+                  }}
+                  // We don't pass 'value' or other 'field' props like 'ref' directly to file input
+                  // as it's largely uncontrolled for its value attribute.
+                  // The 'field.onChange' is the key integration point.
+                />
               );
             default:
               return <Input type="text" {...fieldProps} />;
@@ -115,6 +142,11 @@ const PropertyEditor: React.FC = () => {
             coercedProps[prop.name] = formValue;
             return;
         }
+        // For file types, formValue is already a Data URI string or empty, no further coercion needed here.
+        if (prop.type === 'file') {
+          coercedProps[prop.name] = formValue;
+          return;
+        }
 
         if (prop.type === 'number') {
           if (typeof formValue === 'string') {
@@ -151,8 +183,8 @@ const PropertyEditor: React.FC = () => {
         if (Number.isNaN(valFromForm) && Number.isNaN(valFromState)) {
           continue;
         }
-        // Consider undefined and null as "equivalent" for optional fields
-        if ((valFromForm === undefined || valFromForm === null) && (valFromState === undefined || valFromState === null)) {
+        if ((valFromForm === undefined || valFromForm === null || valFromForm === '') && 
+            (valFromState === undefined || valFromState === null || valFromState === '')) {
             continue;
         }
         if (valFromForm !== valFromState) {
@@ -160,15 +192,13 @@ const PropertyEditor: React.FC = () => {
         }
       }
       
-      // Check if any keys in currentProps are not in definition.properties or if their values in form are undefined
-      // This handles cases where a prop might be removed or become undefined in the form but still exists in currentProps
       for (const keyInState of Object.keys(currentProps)) {
         if (!definition.properties.some(p => p.name === keyInState)) {
-           if (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null) { // If state has a value for a now-missing/undefined form prop
+           if (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null && currentProps[keyInState] !== '') { 
                 propsAreDifferent = true;
            }
-        } else if (relevantCoercedProps[keyInState] === undefined && (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null) ) {
-            // If form has undefined for a prop that has a value in state
+        } else if ( (relevantCoercedProps[keyInState] === undefined || relevantCoercedProps[keyInState] === '') && 
+                    (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null && currentProps[keyInState] !== '') ) {
             propsAreDifferent = true;
         }
       }
@@ -190,20 +220,25 @@ const PropertyEditor: React.FC = () => {
             finalData[prop.name] = formValue;
             return;
         }
+        // For file types, formValue is already a Data URI string or empty.
+        if (prop.type === 'file') {
+           finalData[prop.name] = formValue;
+           return;
+        }
 
         if (prop.type === 'number') {
            if (typeof formValue === 'string') {
             const numVal = parseFloat(formValue);
             finalData[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
           } else {
-            finalData[prop.name] = formValue; // Assume it's already a number or correctly typed
+            finalData[prop.name] = formValue; 
           }
         } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') {
           if (typeof formValue === 'string') {
             const numVal = parseInt(formValue, 10);
             finalData[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
           } else {
-            finalData[prop.name] = formValue; // Assume it's already a number or correctly typed
+            finalData[prop.name] = formValue; 
           }
         } else {
             finalData[prop.name] = formValue;
