@@ -1,3 +1,4 @@
+
 import { PageBuilderProvider } from '@/contexts/PageBuilderContext';
 import ComponentLibrary from '@/components/page-builder/ComponentLibrary';
 import Canvas from '@/components/page-builder/Canvas';
@@ -19,8 +20,8 @@ export default function PageForgeBuilder() {
         
         <main className="flex flex-1 overflow-hidden">
           {/* Component Library Panel */}
-          <aside className="w-80 h-full border-r border-border bg-card p-2_ hidden md:block"> {/* p-2 is too small, ui/sidebar used it for floating */}
-             <div className="h-full p-1"> {/* Inner padding for content of the sidebar */}
+          <aside className="w-80 h-full border-r border-border bg-card p-4 hidden md:block"> {/* p-2 is too small, ui/sidebar used it for floating. Changed p-2_ to p-4 */}
+             <div className="h-full"> {/* Removed p-1 */}
                 <ComponentLibrary />
              </div>
           </aside>
@@ -31,8 +32,8 @@ export default function PageForgeBuilder() {
           </section>
 
           {/* Property Editor Panel */}
-          <aside className="w-96 h-full border-l border-border bg-card p-2_ hidden lg:block">
-            <div className="h-full p-1">
+          <aside className="w-96 h-full border-l border-border bg-card p-4 hidden lg:block"> {/* Changed p-2_ to p-4 */}
+            <div className="h-full"> {/* Removed p-1 */}
                 <PropertyEditor />
             </div>
           </aside>
