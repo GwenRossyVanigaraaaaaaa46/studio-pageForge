@@ -1,8 +1,9 @@
+
 "use client";
 
 import type React from 'react';
-import { useEffect, useRef } from 'react'; // Added useRef
-import { useForm, Controller } from 'react-hook-form'; // Removed useWatch as it's part of useForm
+import { useEffect, useRef } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { usePageBuilder } from '@/contexts/PageBuilderContext';
 import type { ComponentProperty, FormFieldProps } from '@/types/page-builder';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
             case 'color': // Basic text input for color, can be enhanced with a color picker
               return <Input type={type === 'color' ? 'text' : type} {...fieldProps} />;
             case 'number':
-              return <Input type="number" {...fieldProps} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />;
+              return <Input type="number" {...fieldProps} onChange={e => field.onChange(parseFloat(e.target.value) || (defaultValue ?? 0))} />;
             case 'textarea':
               return <Textarea {...fieldProps} rows={3} />;
             case 'select':
@@ -73,60 +74,75 @@ const PropertyEditor: React.FC = () => {
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
 
   const { control, handleSubmit, reset, watch } = useForm({
-    defaultValues: editingComponent?.props || {},
+    // Default values are primarily set by the reset effect
   });
 
   const prevEditingComponentIdRef = useRef<string | null | undefined>();
 
-  // Reset form when editingComponent ID changes or definition changes
+  // Effect to reset form when the component being edited changes
   useEffect(() => {
     if (editingComponent && definition) {
-      // Only reset the form if the actual component being edited has changed (ID is different)
-      // or if it's the initial load for this component.
       if (editingComponent.id !== prevEditingComponentIdRef.current) {
         const defaultValuesWithDef = { ...definition.defaultProps, ...editingComponent.props };
         reset(defaultValuesWithDef);
+        prevEditingComponentIdRef.current = editingComponent.id;
       }
-      // Always update the ref to the current component's ID for the next comparison.
-      prevEditingComponentIdRef.current = editingComponent.id;
     } else {
-      // If no component is being edited, reset to empty and clear the ref.
-      reset({});
+      reset({}); // Reset to empty if no component is selected
       prevEditingComponentIdRef.current = null;
     }
   }, [editingComponent, definition, reset]);
 
 
-  // Live update props on change
+  // Effect for live updates. This is critical for preventing loops.
   const watchedValues = watch();
   useEffect(() => {
-    if (editingComponent && Object.keys(watchedValues).length > 0 && definition) { // Added definition check
-        const changedProps = { ...watchedValues };
-        // Ensure numbers are numbers
-        definition.properties.forEach(prop => {
-            if (prop.type === 'number' && typeof changedProps[prop.name] === 'string') {
-                changedProps[prop.name] = parseFloat(changedProps[prop.name] as string);
-                if (isNaN(changedProps[prop.name])) {
-                   changedProps[prop.name] = prop.defaultValue || 0;
-                }
-            }
-        });
-        updateComponentProps(editingComponent.id, changedProps);
+    if (editingComponent && definition && Object.keys(watchedValues).length > 0) {
+      const coercedProps = { ...watchedValues };
+
+      // Coerce types (e.g., string from input to number)
+      definition.properties.forEach(prop => {
+        if (prop.type === 'number' && typeof coercedProps[prop.name] === 'string') {
+          const numVal = parseFloat(coercedProps[prop.name] as string);
+          coercedProps[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
+        }
+      });
+
+      // Compare coercedProps with editingComponent.props to see if an update is truly needed
+      let hasChanged = false;
+      const currentProps = editingComponent.props;
+      const newKeys = Object.keys(coercedProps);
+      const oldKeys = Object.keys(currentProps);
+
+      if (newKeys.length !== oldKeys.length) {
+        hasChanged = true;
+      } else {
+        for (const key of newKeys) {
+          // Handle NaN comparison explicitly, as NaN !== NaN
+          if (Number.isNaN(coercedProps[key]) && Number.isNaN(currentProps[key])) {
+            continue;
+          }
+          if (coercedProps[key] !== currentProps[key]) {
+            hasChanged = true;
+            break;
+          }
+        }
+      }
+
+      if (hasChanged) {
+        updateComponentProps(editingComponent.id, coercedProps);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watchedValues, editingComponent, updateComponentProps, definition]);
+  }, [watchedValues, editingComponent, definition, updateComponentProps]);
 
 
   const onSubmit = (data: Record<string, any>) => {
-    if (editingComponent && definition) { // Added definition check
-      // Ensure numbers are numbers on final submit too
+    if (editingComponent && definition) {
       const finalData = { ...data };
       definition.properties.forEach(prop => {
         if (prop.type === 'number' && typeof finalData[prop.name] === 'string') {
-          finalData[prop.name] = parseFloat(finalData[prop.name] as string);
-           if (isNaN(finalData[prop.name])) {
-             finalData[prop.name] = prop.defaultValue || 0;
-           }
+          const numVal = parseFloat(finalData[prop.name] as string);
+          finalData[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
         }
       });
       updateComponentProps(editingComponent.id, finalData);
@@ -179,3 +195,6 @@ const PropertyEditor: React.FC = () => {
 };
 
 export default PropertyEditor;
+
+
+    
