@@ -52,7 +52,7 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
           for (const key of allKeys) {
             const currentVal = currentCompProps[key];
             const newVal = newProps[key];
-            // Handle NaN specifically: NaN !== NaN, but we consider them equal if both are NaN
+            
             if (typeof newVal === 'number' && isNaN(newVal) && typeof currentVal === 'number' && isNaN(currentVal)) {
               continue;
             }
@@ -66,13 +66,13 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
             wasPageComponentsUpdated = true;
             return { ...comp, props: { ...currentCompProps, ...newProps } };
           }
-          return comp; // Return original component if props are the same
+          return comp; 
         }
         return comp;
       })
     );
-
-    let wasEditingComponentUpdated = false;
+    
+    let actualUpdateInEditingComponent = false;
     setEditingComponent(currentEditingComp => {
       if (currentEditingComp && currentEditingComp.id === id) {
         const currentEditingProps = currentEditingComp.props;
@@ -92,24 +92,18 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
 
         if (editingPropsNeedUpdate) {
-          wasEditingComponentUpdated = true; // This flag will be true within this callback's closure if an update happens
+          actualUpdateInEditingComponent = true;
           return { ...currentEditingComp, props: { ...currentEditingProps, ...newProps } };
         }
-        return currentEditingComp; // Return original if props are the same
+        return currentEditingComp; 
       }
       return currentEditingComp;
     });
 
-    // The `PropertyEditor` calls `updateComponentProps` only if it detects a difference.
-    // The checks above prevent creating new object references if the data is identical, optimizing re-renders.
-    // So, if this function is called, it's because an update was intended.
-    if (wasPageComponentsUpdated) { // Toast if the main data store (pageComponents) was actually modified.
-                                    // `wasEditingComponentUpdated` cannot be reliably checked here for the toast
-                                    // in the same tick due to setState's async nature.
-                                    // Relying on `wasPageComponentsUpdated` is a good proxy.
-      toast({ title: "Component Updated", description: `Properties saved.` });
-    }
-  }, [toast]);
+    // if (wasPageComponentsUpdated || actualUpdateInEditingComponent) {
+    //   toast({ title: "Component Updated", description: `Properties saved.` });
+    // }
+  }, [toast]); // Keep toast in dependency array if other toasts might be used, or remove if no other toasts in this callback
 
   const selectComponent = useCallback((id: string | null) => {
     setSelectedComponentId(id);
@@ -123,7 +117,7 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setEditingComponent(null);
       setIsPropertyEditorOpen(false);
     }
-  }, [pageComponents]); // depends on pageComponents to find the component
+  }, [pageComponents]);
 
   const deleteComponent = useCallback((id: string) => {
     setPageComponents(prev => prev.filter(comp => comp.id !== id));
@@ -162,9 +156,6 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const closePropertyEditor = useCallback(() => {
     setIsPropertyEditorOpen(false);
-    // Optional: Deselect component when closing editor to prevent stale editing state
-    // setSelectedComponentId(null); 
-    // setEditingComponent(null);
   }, []);
   
   const contextValue = useMemo(() => ({
@@ -203,6 +194,3 @@ export const usePageBuilder = (): PageBuilderContextType => {
   }
   return context;
 };
-
-
-    
