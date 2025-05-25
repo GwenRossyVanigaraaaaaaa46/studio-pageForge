@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Settings } from 'lucide-react';
 
 const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
-  const { name, label, type, options, placeholder } = property; // defaultValue removed from here
+  const { name, label, type, options, placeholder } = property; 
 
   return (
     <div className="mb-4">
@@ -26,23 +26,20 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
       <Controller
         name={name}
         control={control}
-        // defaultValue prop removed here as reset() should handle setting form values
         render={({ field }) => {
-          // Ensure field.value is not null or undefined for controlled components that expect strings
           const value = field.value ?? ''; 
           const fieldProps = { ...field, placeholder, id: name, value };
           
           switch (type) {
             case 'text':
             case 'url':
-            case 'color': // Basic text input for color, can be enhanced with a color picker
+            case 'color':
               return <Input type={type === 'color' ? 'text' : type} {...fieldProps} />;
             case 'number':
               return <Input 
                         type="number" 
                         {...fieldProps} 
-                        // value needs to be string for input type=number, or handle empty string for controlled component
-                        value={field.value === null || field.value === undefined || isNaN(parseFloat(field.value)) ? '' : String(field.value)}
+                        value={field.value === null || field.value === undefined || isNaN(parseFloat(field.value as string)) ? '' : String(field.value)}
                         onChange={e => {
                             const numVal = parseFloat(e.target.value);
                             field.onChange(isNaN(numVal) ? (property.defaultValue ?? 0) : numVal);
@@ -53,8 +50,8 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
             case 'select':
               return (
                 <Select 
-                  onValueChange={(val) => field.onChange(val)} // val is already string from SelectItem
-                  value={String(field.value)} // Ensure value is a string for Select
+                  onValueChange={(val) => field.onChange(val)} 
+                  value={String(field.value)} 
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
@@ -88,9 +85,7 @@ const PropertyEditor: React.FC = () => {
   
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
 
-  const { control, handleSubmit, reset, watch } = useForm({
-    // Default values are primarily set by the reset effect
-  });
+  const { control, handleSubmit, reset, watch } = useForm({});
 
   const prevEditingComponentIdRef = useRef<string | null | undefined>();
 
@@ -111,12 +106,12 @@ const PropertyEditor: React.FC = () => {
   const watchedValues = watch();
   useEffect(() => {
     if (editingComponent && definition && Object.keys(watchedValues).length > 0) {
-      const coercedProps = { ...watchedValues };
+      const coercedProps: Record<string, any> = { ...watchedValues };
 
       definition.properties.forEach(prop => {
         const formValue = watchedValues[prop.name];
         
-        if (formValue === undefined || formValue === null) { // Allow undefined or null to pass through for now
+        if (formValue === undefined || formValue === null) { 
             coercedProps[prop.name] = formValue;
             return;
         }
@@ -126,44 +121,61 @@ const PropertyEditor: React.FC = () => {
             const numVal = parseFloat(formValue);
             coercedProps[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
           } else if (typeof formValue === 'number') {
-            coercedProps[prop.name] = formValue; // Already a number
+            coercedProps[prop.name] = formValue; 
           } else {
-             coercedProps[prop.name] = (prop.defaultValue ?? 0); // Fallback for unexpected types
+             coercedProps[prop.name] = (prop.defaultValue ?? 0); 
           }
         } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') {
-          // If the select's default value is a number, assume its value should be numeric
           if (typeof formValue === 'string') {
             const numVal = parseInt(formValue, 10);
             coercedProps[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
           } else if (typeof formValue === 'number') {
-            coercedProps[prop.name] = formValue; // Already a number
+            coercedProps[prop.name] = formValue; 
           } else {
-            coercedProps[prop.name] = prop.defaultValue; // Fallback
+            coercedProps[prop.name] = prop.defaultValue; 
           }
         }
-        // Other types are assumed to be correctly typed by the form (e.g., string for text/textarea)
-        // or don't need explicit coercion beyond what react-hook-form provides.
       });
       
       let propsAreDifferent = false;
       const currentProps = editingComponent.props;
-      const allKeys = new Set([...Object.keys(currentProps), ...Object.keys(coercedProps)]);
+      const relevantCoercedProps: Record<string, any> = {};
 
-      for (const key of allKeys) {
+      for (const prop of definition.properties) {
+        const key = prop.name;
         const valFromForm = coercedProps[key];
         const valFromState = currentProps[key];
+        
+        relevantCoercedProps[key] = valFromForm;
 
         if (Number.isNaN(valFromForm) && Number.isNaN(valFromState)) {
           continue;
         }
+        // Consider undefined and null as "equivalent" for optional fields
+        if ((valFromForm === undefined || valFromForm === null) && (valFromState === undefined || valFromState === null)) {
+            continue;
+        }
         if (valFromForm !== valFromState) {
           propsAreDifferent = true;
-          break;
+        }
+      }
+      
+      // Check if any keys in currentProps are not in definition.properties or if their values in form are undefined
+      // This handles cases where a prop might be removed or become undefined in the form but still exists in currentProps
+      for (const keyInState of Object.keys(currentProps)) {
+        if (!definition.properties.some(p => p.name === keyInState)) {
+           if (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null) { // If state has a value for a now-missing/undefined form prop
+                propsAreDifferent = true;
+           }
+        } else if (relevantCoercedProps[keyInState] === undefined && (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null) ) {
+            // If form has undefined for a prop that has a value in state
+            propsAreDifferent = true;
         }
       }
 
+
       if (propsAreDifferent) {
-        updateComponentProps(editingComponent.id, coercedProps);
+        updateComponentProps(editingComponent.id, relevantCoercedProps);
       }
     }
   }, [watchedValues, editingComponent, definition, updateComponentProps, getComponentDefinition]);
@@ -171,22 +183,30 @@ const PropertyEditor: React.FC = () => {
 
   const onSubmit = (data: Record<string, any>) => {
     if (editingComponent && definition) {
-      const finalData = { ...data };
+      const finalData: Record<string, any> = {};
       definition.properties.forEach(prop => {
-        // Coercion for submit, similar to live update
-        const formValue = finalData[prop.name];
-        if (formValue === undefined || formValue === null) return;
+        const formValue = data[prop.name];
+         if (formValue === undefined || formValue === null) {
+            finalData[prop.name] = formValue;
+            return;
+        }
 
         if (prop.type === 'number') {
            if (typeof formValue === 'string') {
             const numVal = parseFloat(formValue);
             finalData[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
+          } else {
+            finalData[prop.name] = formValue; // Assume it's already a number or correctly typed
           }
         } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') {
           if (typeof formValue === 'string') {
             const numVal = parseInt(formValue, 10);
             finalData[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
+          } else {
+            finalData[prop.name] = formValue; // Assume it's already a number or correctly typed
           }
+        } else {
+            finalData[prop.name] = formValue;
         }
       });
       updateComponentProps(editingComponent.id, finalData);
