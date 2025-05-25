@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -32,31 +33,76 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
       props: { ...definition.defaultProps },
     };
     setPageComponents(prev => [...prev, newComponent]);
-    setSelectedComponentId(newComponent.id); // Auto-select new component
+    setSelectedComponentId(newComponent.id);
     setEditingComponent(newComponent);
     setIsPropertyEditorOpen(true);
     toast({ title: "Component Added", description: `${definition.name} has been added to the page.` });
   }, [getComponentDefinition, toast]);
 
   const updateComponentProps = useCallback((id: string, newProps: Record<string, any>) => {
+    let anActualUpdateOccurred = false;
+
     setPageComponents(prevComps =>
-      prevComps.map(comp =>
-        comp.id === id ? { ...comp, props: { ...comp.props, ...newProps } } : comp
-      )
+      prevComps.map(comp => {
+        if (comp.id === id) {
+          const currentCompProps = comp.props;
+          let propsHaveActuallyChanged = false;
+          const allKeys = new Set([...Object.keys(currentCompProps), ...Object.keys(newProps)]);
+
+          for (const key of allKeys) {
+            const currentVal = currentCompProps[key];
+            const newVal = newProps[key];
+            // Handle NaN specifically: NaN !== NaN, but we consider them equal if both are NaN
+            if (typeof newVal === 'number' && isNaN(newVal) && typeof currentVal === 'number' && isNaN(currentVal)) {
+              continue;
+            }
+            if (currentVal !== newVal) {
+              propsHaveActuallyChanged = true;
+              break;
+            }
+          }
+
+          if (propsHaveActuallyChanged) {
+            anActualUpdateOccurred = true;
+            return { ...comp, props: { ...currentCompProps, ...newProps } };
+          }
+          return comp; // Return original component if props are the same to maintain reference
+        }
+        return comp;
+      })
     );
-    // Update editingComponent state if it's the one being modified.
-    // Use functional update to avoid needing editingComponent in useCallback deps.
+
     setEditingComponent(currentEditingComp => {
       if (currentEditingComp && currentEditingComp.id === id) {
-        // Create a new object for editingComponent state with updated props
-        return { ...currentEditingComp, props: { ...currentEditingComp.props, ...newProps } };
+        const currentCompProps = currentEditingComp.props;
+        let propsHaveActuallyChanged = false;
+        const allKeys = new Set([...Object.keys(currentCompProps), ...Object.keys(newProps)]);
+        
+        for (const key of allKeys) {
+          const currentVal = currentCompProps[key];
+          const newVal = newProps[key];
+          if (typeof newVal === 'number' && isNaN(newVal) && typeof currentVal === 'number' && isNaN(currentVal)) {
+            continue;
+          }
+          if (currentVal !== newVal) {
+            propsHaveActuallyChanged = true;
+            break;
+          }
+        }
+
+        if (propsHaveActuallyChanged) {
+          anActualUpdateOccurred = true; // Also mark if editingComponent is updated
+          return { ...currentEditingComp, props: { ...currentCompProps, ...newProps } };
+        }
+        return currentEditingComp; // Return original if props are the same
       }
-      // If not the currently edited component, or no component is being edited, return the existing state.
-      return currentEditingComp; 
+      return currentEditingComp;
     });
 
-    toast({ title: "Component Updated", description: `Properties saved.` });
-  }, [toast]); // setPageComponents and setEditingComponent (from useState) and toast are stable.
+    if (anActualUpdateOccurred) {
+      toast({ title: "Component Updated", description: `Properties saved.` });
+    }
+  }, [toast]); // getComponentDefinition was removed as it's not directly used in this refined version.
 
   const selectComponent = useCallback((id: string | null) => {
     setSelectedComponentId(id);
@@ -70,7 +116,7 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setEditingComponent(null);
       setIsPropertyEditorOpen(false);
     }
-  }, [pageComponents]);
+  }, [pageComponents]); // depends on pageComponents to find the component
 
   const deleteComponent = useCallback((id: string) => {
     setPageComponents(prev => prev.filter(comp => comp.id !== id));
@@ -109,9 +155,6 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const closePropertyEditor = useCallback(() => {
     setIsPropertyEditorOpen(false);
-    // Optionally deselect component or keep it selected:
-    // setSelectedComponentId(null); 
-    // setEditingComponent(null);
   }, []);
   
   const contextValue = useMemo(() => ({
