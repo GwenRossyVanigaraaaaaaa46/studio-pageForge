@@ -1,8 +1,8 @@
 "use client";
 
 import type React from 'react';
-import { useEffect } from 'react';
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useEffect, useRef } from 'react'; // Added useRef
+import { useForm, Controller } from 'react-hook-form'; // Removed useWatch as it's part of useForm
 import { usePageBuilder } from '@/contexts/PageBuilderContext';
 import type { ComponentProperty, FormFieldProps } from '@/types/page-builder';
 import { Button } from '@/components/ui/button';
@@ -76,26 +76,39 @@ const PropertyEditor: React.FC = () => {
     defaultValues: editingComponent?.props || {},
   });
 
-  // Reset form when editingComponent changes
+  const prevEditingComponentIdRef = useRef<string | null | undefined>();
+
+  // Reset form when editingComponent ID changes or definition changes
   useEffect(() => {
     if (editingComponent && definition) {
-      const defaultValuesWithDef = { ...definition.defaultProps, ...editingComponent.props };
-      reset(defaultValuesWithDef);
+      // Only reset the form if the actual component being edited has changed (ID is different)
+      // or if it's the initial load for this component.
+      if (editingComponent.id !== prevEditingComponentIdRef.current) {
+        const defaultValuesWithDef = { ...definition.defaultProps, ...editingComponent.props };
+        reset(defaultValuesWithDef);
+      }
+      // Always update the ref to the current component's ID for the next comparison.
+      prevEditingComponentIdRef.current = editingComponent.id;
     } else {
+      // If no component is being edited, reset to empty and clear the ref.
       reset({});
+      prevEditingComponentIdRef.current = null;
     }
   }, [editingComponent, definition, reset]);
 
 
-  // Live update props on change (debounced would be better for performance)
+  // Live update props on change
   const watchedValues = watch();
   useEffect(() => {
-    if (editingComponent && Object.keys(watchedValues).length > 0) {
+    if (editingComponent && Object.keys(watchedValues).length > 0 && definition) { // Added definition check
         const changedProps = { ...watchedValues };
         // Ensure numbers are numbers
-        definition?.properties.forEach(prop => {
+        definition.properties.forEach(prop => {
             if (prop.type === 'number' && typeof changedProps[prop.name] === 'string') {
-                changedProps[prop.name] = parseFloat(changedProps[prop.name] as string) || prop.defaultValue || 0;
+                changedProps[prop.name] = parseFloat(changedProps[prop.name] as string);
+                if (isNaN(changedProps[prop.name])) {
+                   changedProps[prop.name] = prop.defaultValue || 0;
+                }
             }
         });
         updateComponentProps(editingComponent.id, changedProps);
@@ -105,12 +118,15 @@ const PropertyEditor: React.FC = () => {
 
 
   const onSubmit = (data: Record<string, any>) => {
-    if (editingComponent) {
+    if (editingComponent && definition) { // Added definition check
       // Ensure numbers are numbers on final submit too
       const finalData = { ...data };
-      definition?.properties.forEach(prop => {
+      definition.properties.forEach(prop => {
         if (prop.type === 'number' && typeof finalData[prop.name] === 'string') {
-          finalData[prop.name] = parseFloat(finalData[prop.name] as string) || prop.defaultValue || 0;
+          finalData[prop.name] = parseFloat(finalData[prop.name] as string);
+           if (isNaN(finalData[prop.name])) {
+             finalData[prop.name] = prop.defaultValue || 0;
+           }
         }
       });
       updateComponentProps(editingComponent.id, finalData);

@@ -39,17 +39,24 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [getComponentDefinition, toast]);
 
   const updateComponentProps = useCallback((id: string, newProps: Record<string, any>) => {
-    setPageComponents(prev =>
-      prev.map(comp =>
+    setPageComponents(prevComps =>
+      prevComps.map(comp =>
         comp.id === id ? { ...comp, props: { ...comp.props, ...newProps } } : comp
       )
     );
-    // If the updated component is the one being edited, update its state too
-    if (editingComponent?.id === id) {
-      setEditingComponent(prev => prev ? { ...prev, props: { ...prev.props, ...newProps } } : null);
-    }
-     toast({ title: "Component Updated", description: `Properties saved.` });
-  }, [editingComponent, toast]);
+    // Update editingComponent state if it's the one being modified.
+    // Use functional update to avoid needing editingComponent in useCallback deps.
+    setEditingComponent(currentEditingComp => {
+      if (currentEditingComp && currentEditingComp.id === id) {
+        // Create a new object for editingComponent state with updated props
+        return { ...currentEditingComp, props: { ...currentEditingComp.props, ...newProps } };
+      }
+      // If not the currently edited component, or no component is being edited, return the existing state.
+      return currentEditingComp; 
+    });
+
+    toast({ title: "Component Updated", description: `Properties saved.` });
+  }, [toast]); // setPageComponents and setEditingComponent (from useState) and toast are stable.
 
   const selectComponent = useCallback((id: string | null) => {
     setSelectedComponentId(id);
