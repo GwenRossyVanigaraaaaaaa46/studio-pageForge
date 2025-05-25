@@ -1,8 +1,10 @@
+
 import type { ComponentDefinition } from '@/types/page-builder';
 import HeaderElement from '@/components/page-builder/elements/HeaderElement';
 import TextElement from '@/components/page-builder/elements/TextElement';
 import ImageElement from '@/components/page-builder/elements/ImageElement';
-import { Heading1, Type, Image as ImageIcon, Palette } from 'lucide-react';
+import DescriptionBulletElement from '@/components/page-builder/elements/DescriptionBulletElement';
+import { Heading1, Type, Image as ImageIcon, Palette, ListChecks } from 'lucide-react';
 
 export const COMPONENT_REGISTRY: ComponentDefinition[] = [
   {
@@ -116,5 +118,43 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
       },
     ],
     component: ImageElement,
+  },
+  {
+    type: 'DescriptionBulletElement',
+    name: 'Description & Bullets',
+    icon: ListChecks,
+    defaultProps: {
+      description: 'This is a compelling brief description highlighting the main advantages of your product or service. You can edit this text to suit your needs.',
+      bulletPointsText: "Feature 1: Describe its benefit.\nFeature 2: Another key advantage.\nFeature 3: Important detail for users.",
+      alignment: 'left',
+    },
+    properties: [
+      {
+        name: 'description',
+        label: 'Brief Description',
+        type: 'textarea',
+        defaultValue: 'This is a compelling brief description highlighting the main advantages of your product or service. You can edit this text to suit your needs.',
+        placeholder: 'Enter a brief description here.',
+      },
+      {
+        name: 'bulletPointsText',
+        label: 'Bullet Points (one per line)',
+        type: 'textarea',
+        defaultValue: "Feature 1: Describe its benefit.\nFeature 2: Another key advantage.\nFeature 3: Important detail for users.",
+        placeholder: 'Enter each bullet point on a new line.',
+      },
+      {
+        name: 'alignment',
+        label: 'Alignment',
+        type: 'select',
+        defaultValue: 'left',
+        options: [
+          { label: 'Left', value: 'left' },
+          { label: 'Center', value: 'center' },
+          { label: 'Right', value: 'right' },
+        ],
+      },
+    ],
+    component: DescriptionBulletElement,
   },
 ];
