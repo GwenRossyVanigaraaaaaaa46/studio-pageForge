@@ -10,7 +10,7 @@ export default function PageForgeBuilder() {
   return (
     <PageBuilderProvider>
       <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="h-16 border-b border-border flex items-center px-6 shadow-sm bg-card">
+        <header className="h-14 border-b border-border flex items-center px-6 shadow-sm bg-card">
           <div className="flex items-center">
             <PageForgeLogo className="h-8 w-8 text-primary mr-3" />
             <h1 className="text-2xl font-bold text-primary">PageForge</h1>
@@ -20,8 +20,8 @@ export default function PageForgeBuilder() {
         
         <main className="flex flex-1 overflow-hidden">
           {/* Component Library Panel */}
-          <aside className="w-80 h-full border-r border-border bg-card p-4 hidden md:block"> {/* p-2 is too small, ui/sidebar used it for floating. Changed p-2_ to p-4 */}
-             <div className="h-full"> {/* Removed p-1 */}
+          <aside className="w-72 h-full border-r border-border bg-card p-4 hidden md:block">
+             <div className="h-full">
                 <ComponentLibrary />
              </div>
           </aside>
@@ -32,8 +32,8 @@ export default function PageForgeBuilder() {
           </section>
 
           {/* Property Editor Panel */}
-          <aside className="w-96 h-full border-l border-border bg-card p-4 hidden lg:block"> {/* Changed p-2_ to p-4 */}
-            <div className="h-full"> {/* Removed p-1 */}
+          <aside className="w-80 h-full border-l border-border bg-card p-4 hidden lg:block">
+            <div className="h-full">
                 <PropertyEditor />
             </div>
           </aside>
@@ -46,3 +46,4 @@ export default function PageForgeBuilder() {
     </PageBuilderProvider>
   );
 }
+
