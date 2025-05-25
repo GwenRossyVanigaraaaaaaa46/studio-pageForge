@@ -26,7 +26,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
       <Controller
         name={name}
         control={control}
-        defaultValue={defaultValue}
+        // defaultValue prop removed here as reset() should handle setting form values
         render={({ field }) => {
           const fieldProps = { ...field, placeholder, id: name, value: field.value ?? '' };
           switch (type) {
@@ -82,19 +82,21 @@ const PropertyEditor: React.FC = () => {
   // Effect to reset form when the component being edited changes
   useEffect(() => {
     if (editingComponent && definition) {
-      if (editingComponent.id !== prevEditingComponentIdRef.current) {
+      // Only reset if the component ID actually changes, or it becomes defined/undefined,
+      // or if it's the initial load for a component (prevEditingComponentIdRef.current is undefined)
+      if (editingComponent.id !== prevEditingComponentIdRef.current || !prevEditingComponentIdRef.current) {
         const defaultValuesWithDef = { ...definition.defaultProps, ...editingComponent.props };
         reset(defaultValuesWithDef);
         prevEditingComponentIdRef.current = editingComponent.id;
       }
-    } else {
-      reset({}); // Reset to empty if no component is selected
+    } else if (prevEditingComponentIdRef.current) { // If component becomes null and there was a previously edited component
+      reset({}); 
       prevEditingComponentIdRef.current = null;
     }
   }, [editingComponent, definition, reset]);
 
 
-  // Effect for live updates. This is critical for preventing loops.
+  // Effect for live updates.
   const watchedValues = watch();
   useEffect(() => {
     if (editingComponent && definition && Object.keys(watchedValues).length > 0) {
@@ -108,7 +110,6 @@ const PropertyEditor: React.FC = () => {
         }
       });
 
-      // Compare coercedProps with editingComponent.props to see if an update is truly needed
       let hasChanged = false;
       const currentProps = editingComponent.props;
       const newKeys = Object.keys(coercedProps);
@@ -118,7 +119,6 @@ const PropertyEditor: React.FC = () => {
         hasChanged = true;
       } else {
         for (const key of newKeys) {
-          // Handle NaN comparison explicitly, as NaN !== NaN
           if (Number.isNaN(coercedProps[key]) && Number.isNaN(currentProps[key])) {
             continue;
           }
@@ -195,6 +195,4 @@ const PropertyEditor: React.FC = () => {
 };
 
 export default PropertyEditor;
-
-
     
