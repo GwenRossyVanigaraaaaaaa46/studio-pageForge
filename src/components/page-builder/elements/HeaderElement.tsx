@@ -22,20 +22,26 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
     right: 'text-right',
   }[alignment];
 
+  // Validate level to prevent invalid tags, though TypeScript types should catch this.
+  // Fallback to h1 if level is somehow out of expected range.
+  const safeLevel = (typeof level === 'number' && level >= 1 && level <= 6) ? level : 1;
+  const SafeTag = `h${safeLevel}` as keyof JSX.IntrinsicElements;
+
+
   return (
     <div className={`p-4 w-full ${alignmentClass}`}>
-      <Tag className={`font-bold ${
-        level === 1 ? 'text-4xl' : 
-        level === 2 ? 'text-3xl' :
-        level === 3 ? 'text-2xl' :
-        level === 4 ? 'text-xl' :
-        level === 5 ? 'text-lg' : 'text-base'
+      <SafeTag className={`font-bold ${
+        safeLevel === 1 ? 'text-4xl' : 
+        safeLevel === 2 ? 'text-3xl' :
+        safeLevel === 3 ? 'text-2xl' :
+        safeLevel === 4 ? 'text-xl' :
+        safeLevel === 5 ? 'text-lg' : 'text-base'
       } text-foreground`}>
         {title || 'Default Title'}
-      </Tag>
+      </SafeTag>
       {subtitle && (
         <p className={`mt-2 ${
-          level <= 2 ? 'text-lg' : 'text-md'
+          safeLevel <= 2 ? 'text-lg' : 'text-md'
         } text-muted-foreground`}>
           {subtitle}
         </p>
