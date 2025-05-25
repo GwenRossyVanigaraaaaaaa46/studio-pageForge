@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -13,7 +14,10 @@ const DescriptionBulletElement: React.FC<DescriptionBulletElementProps> = ({
   bulletPointsText,
   alignment = 'left',
 }) => {
-  const bullets = bulletPointsText
+  const safeDescription = description || ""; // Fallback for description
+  const safeBulletPointsText = bulletPointsText || ""; // Fallback for bulletPointsText
+
+  const bullets = safeBulletPointsText
     .split('\n')
     .map(line => line.trim())
     .filter(line => line.length > 0);
@@ -34,7 +38,7 @@ const DescriptionBulletElement: React.FC<DescriptionBulletElementProps> = ({
   return (
     <div className={`p-4 w-full flex flex-col ${alignmentClass}`}>
       <p className="mb-3 text-base text-foreground whitespace-pre-wrap">
-        {description || 'Default brief description. Edit to add your own content.'}
+        {safeDescription || 'Default brief description. Edit to add your own content.'}
       </p>
       {bullets.length > 0 && (
         <ul className={`list-disc list-inside space-y-1 text-base text-foreground ${ulAlignmentClass} max-w-prose`}>
@@ -43,7 +47,7 @@ const DescriptionBulletElement: React.FC<DescriptionBulletElementProps> = ({
           ))}
         </ul>
       )}
-      {bullets.length === 0 && (
+      {bullets.length === 0 && !safeBulletPointsText && ( // Also check safeBulletPointsText to hide this if user just cleared the text
          <p className="text-muted-foreground text-sm">
             (Add bullet points in the editor, one per line)
         </p>
