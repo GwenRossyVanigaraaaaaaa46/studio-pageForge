@@ -2,7 +2,7 @@
 "use client";
 
 import type React from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { usePageBuilder } from '@/contexts/PageBuilderContext';
 import type { ComponentProperty, FormFieldProps } from '@/types/page-builder';
@@ -29,7 +29,9 @@ const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ pro
         control={control}
         render={({ field }) => {
           const valuePropForInput = type === 'file' ? undefined : (field.value ?? '');
-          const fieldProps = { ...field, placeholder, id: name, value: valuePropForInput };
+          // For file inputs, 'value' must be undefined or it can cause issues.
+          // RHF handles file input state internally via field.onChange.
+          const fieldProps = { ...field, placeholder, id: name, value: type === 'file' ? undefined : valuePropForInput };
           
           switch (type) {
             case 'text':
@@ -84,7 +86,9 @@ const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ pro
                       field.onChange(''); 
                     }
                   }}
-                  {...{...field, value: undefined }} // value must be undefined for file input
+                  // Pass field props, but ensure `value` is not directly set for file inputs
+                  // RHF handles the value internally for controlled file inputs via `field.onChange`
+                  {...{...field, value: undefined }}
                 />
               );
             default:
@@ -158,28 +162,23 @@ const PropertyEditor: React.FC = () => {
   
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
 
-  const { control, handleSubmit, reset, watch } = useForm({});
-  const prevEditingComponentIdRef = useRef<string | null | undefined>();
-
+  const { control, handleSubmit, reset } = useForm({});
+  
   useEffect(() => {
     if (editingComponent && definition) {
-      if (editingComponent.id !== prevEditingComponentIdRef.current || (editingComponent && !prevEditingComponentIdRef.current)) {
-        const initialFormValues: Record<string, any> = {};
-        definition.properties.forEach(prop => {
-          initialFormValues[prop.name] = getInitialFormValue(prop, editingComponent.props, definition.defaultProps);
-        });
+      const initialFormValues: Record<string, any> = {};
+      definition.properties.forEach(prop => {
+        initialFormValues[prop.name] = getInitialFormValue(prop, editingComponent.props, definition.defaultProps);
+      });
 
-        if (editingComponent.type === 'ImageElement') {
-             initialFormValues['src'] = (typeof editingComponent.props.src === 'string' && editingComponent.props.src.startsWith('data:image')) 
-                                        ? editingComponent.props.src 
-                                        : '';
-        }
-        reset(initialFormValues);
-        prevEditingComponentIdRef.current = editingComponent.id;
+      if (editingComponent.type === 'ImageElement') {
+           initialFormValues['src'] = (typeof editingComponent.props.src === 'string' && editingComponent.props.src.startsWith('data:image')) 
+                                      ? editingComponent.props.src 
+                                      : '';
       }
-    } else if (!editingComponent && prevEditingComponentIdRef.current) { 
+      reset(initialFormValues);
+    } else if (!editingComponent) { 
       reset({}); 
-      prevEditingComponentIdRef.current = null;
     }
   }, [editingComponent, definition, reset]);
 
@@ -193,25 +192,21 @@ const PropertyEditor: React.FC = () => {
       });
       
       if (editingComponent.type === 'ImageElement') {
-        const newFileSrc = data.src; // Value from the file input field in the form
-        const existingSrc = editingComponent.props.src;
-        
-        // Determine if the existing source is a valid one (Data URI or HTTP URL)
-        const existingValidSrc = (typeof existingSrc === 'string' && 
-                                 (existingSrc.startsWith('data:image') /* || existingSrc.startsWith('http') */)) // We removed http support for src
-                                 ? existingSrc
-                                 : null;
+        const formDataSrc = data.src; // Value from RHF's state for the 'src' field (should be Data URI or empty)
+        const currentComponentSrc = editingComponent.props.src; // Current src on the component instance
+        let determinedSrc = '';
 
-        if (typeof newFileSrc === 'string' && newFileSrc.startsWith('data:image')) {
-          // New file uploaded and processed to Data URI
-          componentFinalProps.src = newFileSrc;
-        } else if (existingValidSrc) {
-          // No new valid file, but there was an existing valid src (which was a Data URI)
-          componentFinalProps.src = existingValidSrc;
-        } else {
-          // No new valid file and no existing valid src, so use default (empty string)
-          componentFinalProps.src = definition.defaultProps.src || '';
+        if (typeof formDataSrc === 'string' && formDataSrc.startsWith('data:image')) {
+          // If form state for 'src' (from file input) is a Data URI, use it.
+          // This covers new uploads or cases where reset correctly populated it.
+          determinedSrc = formDataSrc;
+        } else if (typeof currentComponentSrc === 'string' && currentComponentSrc.startsWith('data:image')) {
+          // Else, if form state isn't a Data URI, but the component already had one, keep the existing one.
+          // This handles cases where user changes other fields but doesn't re-upload the image.
+          determinedSrc = currentComponentSrc;
         }
+        // If neither of the above, determinedSrc remains '', leading to placeholder.
+        componentFinalProps.src = determinedSrc;
       }
       
       updateComponentProps(editingComponent.id, componentFinalProps);
@@ -252,7 +247,8 @@ const PropertyEditor: React.FC = () => {
       <CardContent className="p-0 flex-grow overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-4">
-            <form onSubmit={handleSubmit(onSubmit)}>
+            {/* Add key to force re-mount and re-initialization of form when editingComponent changes */}
+            <form key={editingComponent.id || 'no-component-selected'} onSubmit={handleSubmit(onSubmit)}>
               {definition.properties.map(prop => (
                 <FormField key={prop.name} property={prop} control={control} />
               ))}
@@ -268,4 +264,3 @@ const PropertyEditor: React.FC = () => {
 };
 
 export default PropertyEditor;
-
