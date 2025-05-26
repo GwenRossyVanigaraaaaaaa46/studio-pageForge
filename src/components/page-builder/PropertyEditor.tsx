@@ -76,14 +76,15 @@ const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ pro
                     if (file) {
                       const reader = new FileReader();
                       reader.onload = () => {
-                        field.onChange(reader.result as string); 
+                        field.onChange(reader.result as string);
                       };
                       reader.readAsDataURL(file);
                     } else {
-                      field.onChange(''); 
+                      field.onChange('');
                     }
                   }}
-                  {...{...field, value: undefined }}
+                  name={field.name}
+  ref={field.ref}
                 />
               );
             default:
