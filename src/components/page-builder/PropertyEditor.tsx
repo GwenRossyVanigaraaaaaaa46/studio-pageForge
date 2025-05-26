@@ -11,12 +11,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Settings } from 'lucide-react';
 
 const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
-  const { name, label, type, options, placeholder, defaultValue } = property; 
+  const { name, label, type, options, placeholder } = property; 
 
   return (
     <div className="mb-4">
@@ -26,7 +26,6 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
       <Controller
         name={name}
         control={control}
-        // defaultValue={defaultValue} // Removed as per earlier fix attempt, reset() handles this.
         render={({ field }) => {
           const value = type === 'file' ? undefined : (field.value ?? '');
           const fieldProps = { ...field, placeholder, id: name, value };
@@ -52,7 +51,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
               return (
                 <Select 
                   onValueChange={(val) => field.onChange(val)} 
-                  value={String(field.value)} 
+                  value={String(field.value ?? property.defaultValue ?? '')} 
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
@@ -98,8 +97,8 @@ const PropertyEditor: React.FC = () => {
     editingComponent, 
     updateComponentProps, 
     getComponentDefinition,
-    closePropertyEditor,
-    isPropertyEditorOpen
+    closePropertyEditor, // Use context's close function
+    isPropertyEditorPanelOpen // Use new state name from context
   } = usePageBuilder();
   
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
@@ -115,12 +114,11 @@ const PropertyEditor: React.FC = () => {
         reset(defaultValuesWithDef);
         prevEditingComponentIdRef.current = editingComponent.id;
       }
-    } else if (prevEditingComponentIdRef.current || (!editingComponent && isPropertyEditorOpen)) { 
-      // Clear form if component is deselected or editor is open with no component
+    } else if (prevEditingComponentIdRef.current || (!editingComponent && isPropertyEditorPanelOpen)) { 
       reset({}); 
       prevEditingComponentIdRef.current = null;
     }
-  }, [editingComponent, definition, reset, isPropertyEditorOpen]);
+  }, [editingComponent, definition, reset, isPropertyEditorPanelOpen]);
 
 
   const watchedValues = watch();
@@ -170,33 +168,29 @@ const PropertyEditor: React.FC = () => {
         let valFromForm = coercedProps[key];
         let valFromState = currentProps[key];
         
-        // Normalize undefined/null to empty string for comparison in some cases, or handle types explicitly
-        if ((valFromForm === undefined || valFromForm === null) && (valFromState === undefined || valFromState === null || valFromState === '')) {
-             // Both are effectively "empty"
+        if ((valFromForm === undefined || valFromForm === null || valFromForm === '') && (valFromState === undefined || valFromState === null || valFromState === '')) {
+             // Both are effectively "empty" / unchanged from default if not touched
         } else if (valFromForm !== valFromState) {
           propsAreDifferent = true;
         }
         relevantCoercedProps[key] = valFromForm;
       }
       
-      // Check if any prop that was in currentProps is now missing (effectively cleared) from coercedProps
       for (const keyInState of Object.keys(currentProps)) {
-        if (!definition.properties.some(p => p.name === keyInState)) { // Prop removed from definition? Unlikely here.
-           if (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null && currentProps[keyInState] !== '') { 
-                // This case implies a prop existed and might now be undefined in form, which is a change.
-           }
+        if (!definition.properties.some(p => p.name === keyInState)) { 
+            // Prop might have been removed from definition, or is not in form.
+            // If it was in currentProps and now formValue is 'cleared' (undefined/null/''), it's a change.
         } else if ( (relevantCoercedProps[keyInState] === undefined || relevantCoercedProps[keyInState] === null || relevantCoercedProps[keyInState] === '') && 
                     (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null && currentProps[keyInState] !== '') ) {
             propsAreDifferent = true;
         }
       }
 
-
       if (propsAreDifferent) {
         updateComponentProps(editingComponent.id, relevantCoercedProps);
       }
     }
-  }, [watchedValues, editingComponent, definition, updateComponentProps]);
+  }, [watchedValues, editingComponent, definition, updateComponentProps, reset]);
 
 
   const onSubmit = (data: Record<string, any>) => {
@@ -205,7 +199,7 @@ const PropertyEditor: React.FC = () => {
       definition.properties.forEach(prop => {
         const formValue = data[prop.name];
          if (formValue === undefined || formValue === null) {
-            finalData[prop.name] = formValue; // Allow explicit null/undefined
+            finalData[prop.name] = formValue; 
             return;
         }
         if (prop.type === 'file') {
@@ -235,7 +229,9 @@ const PropertyEditor: React.FC = () => {
     }
   };
 
-  if (!isPropertyEditorOpen || !editingComponent || !definition) {
+  // This component relies on isPropertyEditorPanelOpen from context for its general visibility control.
+  // The check for editingComponent ensures that even if panel is open, content shows only if a component is selected.
+  if (!isPropertyEditorPanelOpen || !editingComponent || !definition) {
     return (
       <Card className="h-full flex flex-col shadow-lg">
         <CardHeader className="border-b">
@@ -258,7 +254,7 @@ const PropertyEditor: React.FC = () => {
           <Settings className="mr-2 h-5 w-5 text-primary" />
           Edit {definition.name}
         </CardTitle>
-        <Button variant="ghost" size="icon" onClick={closePropertyEditor} className="h-8 w-8">
+        <Button variant="ghost" size="icon" onClick={closePropertyEditor} className="h-8 w-8"> {/* Use context's closePropertyEditor */}
           <X className="h-4 w-4" />
         </Button>
       </CardHeader>
@@ -271,12 +267,6 @@ const PropertyEditor: React.FC = () => {
           </form>
         </ScrollArea>
       </CardContent>
-      {/* Footer can be removed if live updates are sufficient, or kept for explicit save */}
-      {/* <CardFooter className="border-t p-4">
-        <Button onClick={handleSubmit(onSubmit)} className="w-full bg-primary hover:bg-primary/90">
-          Save Changes
-        </Button>
-      </CardFooter> */}
     </Card>
   );
 };

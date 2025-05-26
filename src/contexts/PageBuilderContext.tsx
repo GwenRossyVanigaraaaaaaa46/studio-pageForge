@@ -13,7 +13,7 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [pageComponents, setPageComponents] = useState<PageComponent[]>([]);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [editingComponent, setEditingComponent] = useState<PageComponent | null>(null);
-  const [isPropertyEditorOpen, setIsPropertyEditorOpen] = useState<boolean>(false);
+  const [isPropertyEditorPanelOpen, setIsPropertyEditorPanelOpen] = useState<boolean>(true); // Renamed and default to true
   const { toast } = useToast();
 
   const getComponentDefinition = useCallback((type: string): ComponentDefinition | undefined => {
@@ -34,8 +34,8 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     };
     setPageComponents(prev => [...prev, newComponent]);
     setSelectedComponentId(newComponent.id);
-    setEditingComponent(newComponent); // Directly set editing component
-    setIsPropertyEditorOpen(true); // Open property editor
+    setEditingComponent(newComponent);
+    setIsPropertyEditorPanelOpen(true); // Ensure panel opens
     toast({ title: "Component Added", description: `${definition.name} has been added to the page.` });
   }, [getComponentDefinition, toast]);
 
@@ -53,11 +53,7 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
           for (const key of allKeys) {
             const currentVal = currentCompProps[key];
             const newVal = newProps[key];
-            
-            if (typeof newVal === 'number' && isNaN(newVal) && typeof currentVal === 'number' && isNaN(currentVal)) {
-              continue;
-            }
-             if ((currentVal === undefined || currentVal === null || currentVal === '') && (newVal === undefined || newVal === null || newVal === '')) {
+            if ((currentVal === undefined || currentVal === null || currentVal === '') && (newVal === undefined || newVal === null || newVal === '')) {
               continue;
             }
             if (currentVal !== newVal) {
@@ -65,10 +61,9 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
               break;
             }
           }
-
           if (propsHaveActuallyChanged) {
             wasPageComponentsUpdated = true;
-            return { ...comp, props: { ...newProps } }; // Use newProps directly after validation
+            return { ...comp, props: { ...newProps } };
           }
           return comp; 
         }
@@ -85,9 +80,6 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
         for (const key of allKeys) {
           const currentVal = currentEditingProps[key];
           const newVal = newProps[key];
-          if (typeof newVal === 'number' && isNaN(newVal) && typeof currentVal === 'number' && isNaN(currentVal)) {
-            continue;
-          }
            if ((currentVal === undefined || currentVal === null || currentVal === '') && (newVal === undefined || newVal === null || newVal === '')) {
               continue;
             }
@@ -99,18 +91,13 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
         if (editingPropsNeedUpdate) {
           actualUpdateInEditingComponent = true;
-          return { ...currentEditingComp, props: { ...newProps } }; // Use newProps directly
+          return { ...currentEditingComp, props: { ...newProps } };
         }
         return currentEditingComp; 
       }
       return currentEditingComp;
     });
-
-    // User requested removal of "Component Updated" toast.
-    // if (wasPageComponentsUpdated || actualUpdateInEditingComponent) {
-    //   // toast({ title: "Component Updated", description: `Properties saved.` });
-    // }
-  }, [] /* Removed toast from deps as it's stable, updateComponentProps doesn't need to change if toast changes */);
+  }, []);
 
   const selectComponent = useCallback((id: string | null) => {
     setSelectedComponentId(id);
@@ -118,21 +105,24 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const componentToEdit = pageComponents.find(comp => comp.id === id);
       if (componentToEdit) {
         setEditingComponent(componentToEdit);
-        setIsPropertyEditorOpen(true);
+        setIsPropertyEditorPanelOpen(true); // Open panel when a component is selected
       }
     } else {
-      // If deselecting, or clicking canvas, close editor
       setEditingComponent(null);
-      setIsPropertyEditorOpen(false); 
+      // setIsPropertyEditorPanelOpen(false); // Optionally close panel on deselect
+                                         // Let's keep it open if user just clicks canvas,
+                                         // explicit close via X or toggle.
+                                         // Changed my mind: if canvas is clicked, it should behave like explicit close.
+      setIsPropertyEditorPanelOpen(false);
     }
-  }, [pageComponents]); // pageComponents is a dependency here
+  }, [pageComponents]);
 
   const deleteComponent = useCallback((id: string) => {
     setPageComponents(prev => prev.filter(comp => comp.id !== id));
     if (selectedComponentId === id) {
       setSelectedComponentId(null);
       setEditingComponent(null);
-      setIsPropertyEditorOpen(false);
+      setIsPropertyEditorPanelOpen(false); // Close panel if deleted component was being edited
     }
     toast({ title: "Component Removed", description: `Component has been removed.`, variant: "destructive" });
   }, [selectedComponentId, toast]);
@@ -158,14 +148,20 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const openPropertyEditor = useCallback((component: PageComponent) => {
     setEditingComponent(component);
-    setSelectedComponentId(component.id); // Also ensure it's selected
-    setIsPropertyEditorOpen(true);
+    setSelectedComponentId(component.id);
+    setIsPropertyEditorPanelOpen(true); // Ensure panel opens
   }, []);
 
-  const closePropertyEditor = useCallback(() => {
-    // We don't deselect the component here, just close the editor view
-    // Deselection should happen via selectComponent(null)
-    setIsPropertyEditorOpen(false);
+  const closePropertyEditor = useCallback(() => { // Called by X button in PropertyEditor card
+    setEditingComponent(null);
+    setSelectedComponentId(null);
+    setIsPropertyEditorPanelOpen(false); // Close the panel
+  }, []);
+
+  const togglePropertyEditorPanel = useCallback(() => { // Called by panel's chevron toggle
+    setIsPropertyEditorPanelOpen(prev => !prev);
+    // If toggling closed, we don't clear selection, user might reopen.
+    // If toggling open and no component is selected, editor will show placeholder.
   }, []);
   
   const contextValue = useMemo(() => ({
@@ -173,7 +169,7 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     selectedComponentId,
     componentRegistry: COMPONENT_REGISTRY,
     editingComponent,
-    isPropertyEditorOpen,
+    isPropertyEditorPanelOpen, // Use new name
     addComponent,
     updateComponentProps,
     selectComponent,
@@ -183,11 +179,12 @@ export const PageBuilderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     getComponentDefinition,
     openPropertyEditor,
     closePropertyEditor,
+    togglePropertyEditorPanel, // Add new toggle function
   }), [
-    pageComponents, selectedComponentId, editingComponent, isPropertyEditorOpen,
+    pageComponents, selectedComponentId, editingComponent, isPropertyEditorPanelOpen,
     addComponent, updateComponentProps, selectComponent, deleteComponent, 
     moveComponentUp, moveComponentDown, getComponentDefinition,
-    openPropertyEditor, closePropertyEditor
+    openPropertyEditor, closePropertyEditor, togglePropertyEditorPanel
   ]);
 
   return (
