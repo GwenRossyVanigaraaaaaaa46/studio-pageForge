@@ -4,18 +4,28 @@ import ComponentLibrary from '@/components/page-builder/ComponentLibrary';
 import Canvas from '@/components/page-builder/Canvas';
 import PropertyEditor from '@/components/page-builder/PropertyEditor';
 import PageForgeLogo from '@/components/page-builder/icons/PageForgeLogo';
-import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { PlusCircle, Eye } from 'lucide-react';
 
 export default function PageForgeBuilder() {
   return (
     <PageBuilderProvider>
       <div className="flex flex-col h-screen bg-background text-foreground">
-        <header className="h-14 border-b border-border flex items-center px-6 shadow-sm bg-card">
+        <header className="h-14 border-b border-border flex items-center justify-between px-6 shadow-sm bg-card">
           <div className="flex items-center">
             <PageForgeLogo className="h-8 w-8 text-primary mr-3" />
             <h1 className="text-2xl font-bold text-primary">PageForge</h1>
           </div>
-          {/* Future: Add Save/Preview/Publish buttons here */}
+          <div className="flex items-center space-x-2">
+            <Button variant="outline">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add Plugin
+            </Button>
+            <Button variant="default">
+              <Eye className="mr-2 h-4 w-4" />
+              Preview Page
+            </Button>
+          </div>
         </header>
         
         <main className="flex flex-1 overflow-hidden">
@@ -46,4 +56,3 @@ export default function PageForgeBuilder() {
     </PageBuilderProvider>
   );
 }
-
