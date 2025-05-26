@@ -4,7 +4,7 @@ import HeaderElement from '@/components/page-builder/elements/HeaderElement';
 import TextElement from '@/components/page-builder/elements/TextElement';
 import ImageElement from '@/components/page-builder/elements/ImageElement';
 import DescriptionBulletElement from '@/components/page-builder/elements/DescriptionBulletElement';
-import { Heading1, Type, Image as ImageIcon, ListChecks } from 'lucide-react';
+import { Heading1, Type, Image as ImageIcon, ListChecks, Link2 } from 'lucide-react';
 
 export const COMPONENT_REGISTRY: ComponentDefinition[] = [
   {
@@ -92,11 +92,14 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     name: 'Image',
     icon: ImageIcon,
     defaultProps: {
-      src: '', // This is the final src for the component (Data URI or URL)
+      src: '', 
       alt: 'My Awesome Image',
       width: 600,
       height: 400,
       objectFit: 'cover',
+      alignment: 'center',
+      linkUrl: '',
+      linkOpenInNewTab: true,
     },
     properties: [
       { name: 'src', label: 'Image File', type: 'file', defaultValue: '' },
@@ -115,6 +118,28 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
           { label: 'Fill', value: 'fill' },
           { label: 'None', value: 'none' },
           { label: 'Scale Down', value: 'scale-down' },
+        ],
+      },
+      {
+        name: 'alignment',
+        label: 'Alignment',
+        type: 'select',
+        defaultValue: 'center',
+        options: [
+          { label: 'Left', value: 'left' },
+          { label: 'Center', value: 'center' },
+          { label: 'Right', value: 'right' },
+        ],
+      },
+      { name: 'linkUrl', label: 'Link URL (Optional)', type: 'text', defaultValue: '', placeholder: 'https://example.com/page' },
+      {
+        name: 'linkOpenInNewTab',
+        label: 'Open Link in New Tab',
+        type: 'select',
+        defaultValue: true,
+        options: [
+          { label: 'Yes', value: 'true' }, // Store as string for select, coerce to boolean in component/editor
+          { label: 'No', value: 'false' },
         ],
       },
     ],

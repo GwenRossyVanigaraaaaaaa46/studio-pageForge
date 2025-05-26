@@ -84,7 +84,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                       field.onChange(''); 
                     }
                   }}
-                  {...{...field, value: undefined }}
+                  {...{...field, value: undefined }} // value must be undefined for file input
                 />
               );
             default:
@@ -116,16 +116,24 @@ const PropertyEditor: React.FC = () => {
       if (editingComponent.id !== prevEditingComponentIdRef.current || (editingComponent && !prevEditingComponentIdRef.current) || (!editingComponent && prevEditingComponentIdRef.current) ) {
         let initialFormValues: Record<string, any> = { ...definition.defaultProps, ...editingComponent.props };
         
+        // Special handling for ImageElement to populate 'imageUrl' or 'src' in form
         if (definition.type === 'ImageElement') {
           const currentSrc = editingComponent.props.src;
           if (typeof currentSrc === 'string' && (currentSrc.startsWith('http://') || currentSrc.startsWith('https://'))) {
-            initialFormValues.imageUrl = currentSrc; 
-            initialFormValues.src = ''; 
-          } else { 
-            initialFormValues.imageUrl = ''; 
-            initialFormValues.src = currentSrc; 
+            initialFormValues.imageUrl = currentSrc; // Populate imageUrl field
+            initialFormValues.src = ''; // Clear src (file upload) field in form
+          } else { // It's a data URI or empty
+            initialFormValues.imageUrl = ''; // Clear imageUrl field
+            initialFormValues.src = currentSrc; // Populate src (file upload) field
           }
         }
+        // Ensure boolean values from props are strings for select compatibility
+        definition.properties.forEach(prop => {
+          if (prop.type === 'select' && typeof initialFormValues[prop.name] === 'boolean') {
+            initialFormValues[prop.name] = String(initialFormValues[prop.name]);
+          }
+        });
+
         reset(initialFormValues);
         prevEditingComponentIdRef.current = editingComponent.id;
       }
@@ -150,26 +158,37 @@ const PropertyEditor: React.FC = () => {
         } else if (formDataUri) {
           newSrc = formDataUri;
         } else {
+          // If both are empty, try to retain existing src if it was valid
           const existingSrc = editingComponent.props.src;
           if (typeof existingSrc === 'string' && (existingSrc.startsWith('http') || existingSrc.startsWith('data:image'))) {
             newSrc = existingSrc;
           } else {
-            newSrc = definition.defaultProps.src || ''; 
+            newSrc = definition.defaultProps.src || ''; // Fallback to default (placeholder)
           }
         }
         
         finalComponentProps.src = newSrc;
-        finalComponentProps.alt = data.alt ?? definition.defaultProps.alt;
-        finalComponentProps.width = data.width ?? definition.defaultProps.width;
-        finalComponentProps.height = data.height ?? definition.defaultProps.height;
-        finalComponentProps.objectFit = data.objectFit ?? definition.defaultProps.objectFit;
+        // Other ImageElement specific props
+        definition.properties.forEach(prop => {
+          if (prop.name !== 'src' && prop.name !== 'imageUrl') { // src is handled, imageUrl is form-only
+            let formValue = data[prop.name];
+            if (prop.type === 'number') {
+              finalComponentProps[prop.name] = parseFloat(formValue) || (prop.defaultValue ?? 0);
+            } else if (prop.name === 'linkOpenInNewTab') { // Example of boolean from select
+                finalComponentProps[prop.name] = formValue === 'true';
+            } else {
+              finalComponentProps[prop.name] = formValue ?? prop.defaultValue;
+            }
+          }
+        });
 
       } else { 
         definition.properties.forEach(prop => {
           let formValue = data[prop.name];
           
           if (formValue === undefined || formValue === null) {
-              finalComponentProps[prop.name] = formValue; 
+              // Retain original prop value if form value is undefined/null, unless default is explicitly different
+              finalComponentProps[prop.name] = editingComponent.props[prop.name] ?? prop.defaultValue;
               return;
           }
 
@@ -183,6 +202,7 @@ const PropertyEditor: React.FC = () => {
               finalComponentProps[prop.name] = (prop.defaultValue ?? 0);
             }
           } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') { 
+            // Handle numeric selects (like heading level)
             if (typeof formValue === 'string') {
               const numVal = parseInt(formValue, 10);
               finalComponentProps[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
@@ -191,7 +211,11 @@ const PropertyEditor: React.FC = () => {
             } else {
               finalComponentProps[prop.name] = prop.defaultValue;
             }
-          } else { 
+          } else if (prop.type === 'select' && typeof prop.defaultValue === 'boolean') {
+            // Handle boolean selects (like linkOpenInNewTab)
+            finalComponentProps[prop.name] = formValue === 'true';
+          }
+           else { 
               finalComponentProps[prop.name] = formValue;
           }
         });
