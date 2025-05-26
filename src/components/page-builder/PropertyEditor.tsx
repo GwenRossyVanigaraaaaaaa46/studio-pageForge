@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
-const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
+const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ property, control }) => {
   const { name, label, type, options, placeholder } = property; 
 
   return (
@@ -96,6 +96,63 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
   );
 };
 
+const getCoercedValue = (property: ComponentProperty, formValue: any): any => {
+  if (formValue === undefined || formValue === null || formValue === '') {
+    // If form value is "empty", use the property's default value if it exists
+    if (property.defaultValue !== undefined) {
+      return property.defaultValue;
+    }
+    // Otherwise, specific types might need specific empty states (e.g., 0 for number, '' for string)
+    switch (property.type) {
+      case 'number': return 0;
+      case 'select': 
+        if (typeof property.defaultValue === 'boolean') return false;
+        if (typeof property.defaultValue === 'number') return 0;
+        return ''; // Default empty for select
+      default: return ''; // Default empty for other types
+    }
+  }
+
+  switch (property.type) {
+    case 'number':
+      const numVal = parseFloat(formValue);
+      return isNaN(numVal) ? (property.defaultValue ?? 0) : numVal;
+    case 'select':
+      // Check if the property's defaultValue indicates a boolean type
+      if (typeof property.defaultValue === 'boolean') {
+        return formValue === 'true';
+      }
+      // Check if the property's defaultValue indicates a number type
+      if (typeof property.defaultValue === 'number') {
+        const selectedNumVal = parseFloat(formValue);
+        return isNaN(selectedNumVal) ? property.defaultValue : selectedNumVal;
+      }
+      return formValue; // For string-based select values
+    default:
+      return formValue;
+  }
+};
+
+const getInitialFormValue = (property: ComponentProperty, existingProps: Record<string, any>, defaultProps: Record<string, any>): any => {
+  let value = existingProps[property.name];
+
+  // If existing value is undefined, use the default prop value
+  if (value === undefined) {
+    value = defaultProps[property.name];
+  }
+  
+  // If value is still undefined (no existing and no default), use property-specific default
+  if (value === undefined) {
+    value = property.defaultValue;
+  }
+
+  // Special handling for boolean selects for form representation
+  if (property.type === 'select' && typeof value === 'boolean') {
+    return String(value);
+  }
+  return value;
+};
+
 const PropertyEditor: React.FC = () => {
   const { 
     editingComponent, 
@@ -108,29 +165,28 @@ const PropertyEditor: React.FC = () => {
   
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
 
-  const { control, handleSubmit, reset, getValues } = useForm({});
+  const { control, handleSubmit, reset } = useForm({});
   const prevEditingComponentIdRef = useRef<string | null | undefined>();
 
   useEffect(() => {
     if (editingComponent && definition) {
-      if (editingComponent.id !== prevEditingComponentIdRef.current || (editingComponent && !prevEditingComponentIdRef.current) ) {
-        // Prioritize existing props, then fall back to definition's defaultProps
-        let initialFormValues: Record<string, any> = { ...definition.defaultProps, ...editingComponent.props };
-        
-        // Special handling for ImageElement's src:
-        // The form itself will use `src` for the file upload's data URI.
-        // We don't need to transform it here as the `editingComponent.props.src` already holds the correct value (Data URI or empty).
-        if (definition.type === 'ImageElement') {
-           initialFormValues.src = editingComponent.props.src || definition.defaultProps.src || '';
-        }
-        
-        // Coerce boolean values to string for select fields to match SelectItem values
+      if (editingComponent.id !== prevEditingComponentIdRef.current || (editingComponent && !prevEditingComponentIdRef.current)) {
+        const initialFormValues: Record<string, any> = {};
         definition.properties.forEach(prop => {
-          if (prop.type === 'select' && typeof initialFormValues[prop.name] === 'boolean') {
-            initialFormValues[prop.name] = String(initialFormValues[prop.name]);
-          }
+          initialFormValues[prop.name] = getInitialFormValue(prop, editingComponent.props, definition.defaultProps);
         });
 
+        // Special handling for ImageElement src initialization for the form
+        if (editingComponent.type === 'ImageElement') {
+            // The 'src' form field is for the file data URI
+            // The 'alt', 'width', 'height' etc. are regular props.
+            // If props.src is already a data URI (uploaded), set it to form's src.
+            // If it's an external URL (which we removed), it wouldn't be a data URI.
+            // Default to empty string for form's src if editingComponent.props.src is not a Data URI.
+             initialFormValues['src'] = (typeof editingComponent.props.src === 'string' && editingComponent.props.src.startsWith('data:image')) 
+                                        ? editingComponent.props.src 
+                                        : '';
+        }
         reset(initialFormValues);
         prevEditingComponentIdRef.current = editingComponent.id;
       }
@@ -140,76 +196,28 @@ const PropertyEditor: React.FC = () => {
     }
   }, [editingComponent, definition, reset]);
 
-
   const onSubmit = (data: Record<string, any>) => { 
     if (editingComponent && definition) {
       let componentFinalProps: Record<string, any> = { ...(editingComponent.props || {}) }; 
 
-      if (definition.type === 'ImageElement') {
-        // Determine the src for the ImageElement
-        let determinedSrc = '';
-        const dataUriFromForm = typeof data.src === 'string' && data.src.startsWith('data:image') ? data.src : null;
+      definition.properties.forEach(prop => {
+        const formValue = data[prop.name];
+        componentFinalProps[prop.name] = getCoercedValue(prop, formValue);
+      });
 
-        if (dataUriFromForm) {
-          determinedSrc = dataUriFromForm;
-        } else if (editingComponent.props.src && editingComponent.props.src.startsWith('data:image')) {
-          // Retain existing valid data URI if no new file is uploaded but form's src might be cleared/invalid
-          determinedSrc = editingComponent.props.src;
-        } else {
-          determinedSrc = definition.defaultProps.src || ''; // Fallback to default
+      // Special handling for ImageElement src:
+      // If data.src (from file input) is a new Data URI, use it.
+      // Otherwise, retain the existing src prop if no new file was uploaded.
+      if (editingComponent.type === 'ImageElement') {
+        if (typeof data.src === 'string' && data.src.startsWith('data:image')) {
+          componentFinalProps.src = data.src;
+        } else if (componentFinalProps.src === undefined || componentFinalProps.src === '') {
+           // If no new file and existing src is empty/undefined, ensure it stays empty or uses default.
+           componentFinalProps.src = editingComponent.props.src || definition.defaultProps.src || '';
         }
-        componentFinalProps.src = determinedSrc;
-
-        // Update other ImageElement properties from form data
-        definition.properties.forEach(propDef => {
-          if (propDef.name === 'src') return; // src handled above
-
-          const formValue = data[propDef.name];
-          if (formValue !== undefined) { 
-            if (propDef.type === 'number') {
-              componentFinalProps[propDef.name] = parseFloat(formValue as string) || (propDef.defaultValue ?? 0);
-            } else if (propDef.name === 'linkOpenInNewTab') {
-              componentFinalProps[propDef.name] = formValue === 'true';
-            } else {
-              componentFinalProps[propDef.name] = formValue;
-            }
-          }
-        });
-
-      } else { 
-        definition.properties.forEach(prop => {
-          let formValue = data[prop.name];
-          
-          if (formValue === undefined || formValue === null) {
-            componentFinalProps[prop.name] = editingComponent.props[prop.name] ?? prop.defaultValue;
-            return;
-          }
-
-          if (prop.type === 'number') {
-             if (typeof formValue === 'string') {
-              const numVal = parseFloat(formValue);
-              componentFinalProps[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
-            } else if (typeof formValue === 'number') {
-              componentFinalProps[prop.name] = formValue;
-            } else {
-              componentFinalProps[prop.name] = (prop.defaultValue ?? 0);
-            }
-          } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') { 
-            if (typeof formValue === 'string') {
-              const numVal = parseInt(formValue, 10);
-              componentFinalProps[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
-            } else if (typeof formValue === 'number') {
-              componentFinalProps[prop.name] = formValue;
-            } else {
-              componentFinalProps[prop.name] = prop.defaultValue;
-            }
-          } else if (prop.type === 'select' && typeof prop.defaultValue === 'boolean') {
-            componentFinalProps[prop.name] = formValue === 'true';
-          } else { 
-              componentFinalProps[prop.name] = formValue;
-          }
-        });
+        // If data.src is empty AND componentFinalProps.src already has a valid value (from editingComponent.props.src), it will be retained.
       }
+      
       updateComponentProps(editingComponent.id, componentFinalProps);
       toast({
         title: "Properties Saved",
@@ -223,7 +231,7 @@ const PropertyEditor: React.FC = () => {
       <Card className="h-full flex flex-col shadow-lg">
         <CardHeader className="border-b">
           <CardTitle className="text-lg font-semibold flex items-center">
-          <Settings className="mr-2 h-5 w-5 text-primary" />
+            <Settings className="mr-2 h-5 w-5 text-primary" />
             Properties
           </CardTitle>
         </CardHeader>
@@ -250,9 +258,9 @@ const PropertyEditor: React.FC = () => {
           <div className="p-4">
             <form onSubmit={handleSubmit(onSubmit)}>
               {definition.properties.map(prop => (
-                 <FormField key={prop.name} property={prop} control={control} form={{ control, handleSubmit, reset, getValues } as any} />
+                <FormField key={prop.name} property={prop} control={control} />
               ))}
-              <Button type="submit" className="w-full mt-2">
+              <Button type="submit" className="w-full mt-4">
                 Save Changes
               </Button>
             </form>
