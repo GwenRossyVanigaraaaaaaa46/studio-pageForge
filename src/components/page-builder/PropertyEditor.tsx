@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Settings } from 'lucide-react';
 
 const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
-  const { name, label, type, options, placeholder } = property; 
+  const { name, label, type, options, placeholder, defaultValue } = property; 
 
   return (
     <div className="mb-4">
@@ -26,10 +26,8 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
       <Controller
         name={name}
         control={control}
+        // defaultValue={defaultValue} // Removed as per earlier fix attempt, reset() handles this.
         render={({ field }) => {
-          // For file inputs, field.value will be the Data URI string or empty.
-          // The <Input type="file"> itself doesn't use `value` prop in a traditional controlled way.
-          // We only need its onChange to trigger our Data URI conversion.
           const value = type === 'file' ? undefined : (field.value ?? '');
           const fieldProps = { ...field, placeholder, id: name, value };
           
@@ -82,14 +80,8 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                         field.onChange(reader.result as string);
                       };
                       reader.readAsDataURL(file);
-                    } else {
-                      // Optionally handle file removal, e.g., by setting to empty string
-                      // field.onChange('');
                     }
                   }}
-                  // We don't pass 'value' or other 'field' props like 'ref' directly to file input
-                  // as it's largely uncontrolled for its value attribute.
-                  // The 'field.onChange' is the key integration point.
                 />
               );
             default:
@@ -123,11 +115,12 @@ const PropertyEditor: React.FC = () => {
         reset(defaultValuesWithDef);
         prevEditingComponentIdRef.current = editingComponent.id;
       }
-    } else if (prevEditingComponentIdRef.current) { 
+    } else if (prevEditingComponentIdRef.current || (!editingComponent && isPropertyEditorOpen)) { 
+      // Clear form if component is deselected or editor is open with no component
       reset({}); 
       prevEditingComponentIdRef.current = null;
     }
-  }, [editingComponent, definition, reset]);
+  }, [editingComponent, definition, reset, isPropertyEditorOpen]);
 
 
   const watchedValues = watch();
@@ -142,7 +135,6 @@ const PropertyEditor: React.FC = () => {
             coercedProps[prop.name] = formValue;
             return;
         }
-        // For file types, formValue is already a Data URI string or empty, no further coercion needed here.
         if (prop.type === 'file') {
           coercedProps[prop.name] = formValue;
           return;
@@ -175,29 +167,25 @@ const PropertyEditor: React.FC = () => {
 
       for (const prop of definition.properties) {
         const key = prop.name;
-        const valFromForm = coercedProps[key];
-        const valFromState = currentProps[key];
+        let valFromForm = coercedProps[key];
+        let valFromState = currentProps[key];
         
-        relevantCoercedProps[key] = valFromForm;
-
-        if (Number.isNaN(valFromForm) && Number.isNaN(valFromState)) {
-          continue;
-        }
-        if ((valFromForm === undefined || valFromForm === null || valFromForm === '') && 
-            (valFromState === undefined || valFromState === null || valFromState === '')) {
-            continue;
-        }
-        if (valFromForm !== valFromState) {
+        // Normalize undefined/null to empty string for comparison in some cases, or handle types explicitly
+        if ((valFromForm === undefined || valFromForm === null) && (valFromState === undefined || valFromState === null || valFromState === '')) {
+             // Both are effectively "empty"
+        } else if (valFromForm !== valFromState) {
           propsAreDifferent = true;
         }
+        relevantCoercedProps[key] = valFromForm;
       }
       
+      // Check if any prop that was in currentProps is now missing (effectively cleared) from coercedProps
       for (const keyInState of Object.keys(currentProps)) {
-        if (!definition.properties.some(p => p.name === keyInState)) {
+        if (!definition.properties.some(p => p.name === keyInState)) { // Prop removed from definition? Unlikely here.
            if (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null && currentProps[keyInState] !== '') { 
-                propsAreDifferent = true;
+                // This case implies a prop existed and might now be undefined in form, which is a change.
            }
-        } else if ( (relevantCoercedProps[keyInState] === undefined || relevantCoercedProps[keyInState] === '') && 
+        } else if ( (relevantCoercedProps[keyInState] === undefined || relevantCoercedProps[keyInState] === null || relevantCoercedProps[keyInState] === '') && 
                     (currentProps[keyInState] !== undefined && currentProps[keyInState] !== null && currentProps[keyInState] !== '') ) {
             propsAreDifferent = true;
         }
@@ -208,7 +196,7 @@ const PropertyEditor: React.FC = () => {
         updateComponentProps(editingComponent.id, relevantCoercedProps);
       }
     }
-  }, [watchedValues, editingComponent, definition, updateComponentProps, getComponentDefinition]);
+  }, [watchedValues, editingComponent, definition, updateComponentProps]);
 
 
   const onSubmit = (data: Record<string, any>) => {
@@ -217,10 +205,9 @@ const PropertyEditor: React.FC = () => {
       definition.properties.forEach(prop => {
         const formValue = data[prop.name];
          if (formValue === undefined || formValue === null) {
-            finalData[prop.name] = formValue;
+            finalData[prop.name] = formValue; // Allow explicit null/undefined
             return;
         }
-        // For file types, formValue is already a Data URI string or empty.
         if (prop.type === 'file') {
            finalData[prop.name] = formValue;
            return;
@@ -277,21 +264,21 @@ const PropertyEditor: React.FC = () => {
       </CardHeader>
       <CardContent className="p-0 flex-grow">
         <ScrollArea className="h-full p-4">
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit(onSubmit)} onChange={() => handleSubmit(onSubmit)()}>
             {definition.properties.map(prop => (
               <FormField key={prop.name} property={prop} control={control} form={{control, handleSubmit, reset, watch} as any} />
             ))}
           </form>
         </ScrollArea>
       </CardContent>
-      <CardFooter className="border-t p-4">
+      {/* Footer can be removed if live updates are sufficient, or kept for explicit save */}
+      {/* <CardFooter className="border-t p-4">
         <Button onClick={handleSubmit(onSubmit)} className="w-full bg-primary hover:bg-primary/90">
           Save Changes
         </Button>
-      </CardFooter>
+      </CardFooter> */}
     </Card>
   );
 };
 
 export default PropertyEditor;
-    

@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -27,14 +28,14 @@ const ComponentLibrary: React.FC = () => {
                 <Button
                   key={definition.type}
                   variant="outline"
-                  className="w-full justify-start text-left h-auto py-3 transition-all duration-150 ease-in-out hover:shadow-md hover:border-primary"
+                  className="w-full justify-start text-left h-auto py-3 transition-all duration-150 ease-in-out hover:shadow-md hover:border-primary group"
                   onClick={() => addComponent(definition.type)}
                   aria-label={`Add ${definition.name} component`}
                 >
                   <div className="flex items-center">
                     <Icon className="h-5 w-5 mr-3 text-muted-foreground group-hover:text-primary transition-colors" />
                     <div>
-                      <p className="font-medium text-sm">{definition.name}</p>
+                      <p className="font-medium text-sm text-foreground group-hover:text-primary">{definition.name}</p>
                       <p className="text-xs text-muted-foreground">Click to add to page</p>
                     </div>
                   </div>
