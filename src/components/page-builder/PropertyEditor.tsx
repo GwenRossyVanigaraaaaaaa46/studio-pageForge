@@ -98,18 +98,16 @@ const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ pro
 
 const getCoercedValue = (property: ComponentProperty, formValue: any): any => {
   if (formValue === undefined || formValue === null || formValue === '') {
-    // If form value is "empty", use the property's default value if it exists
     if (property.defaultValue !== undefined) {
       return property.defaultValue;
     }
-    // Otherwise, specific types might need specific empty states (e.g., 0 for number, '' for string)
     switch (property.type) {
       case 'number': return 0;
       case 'select': 
         if (typeof property.defaultValue === 'boolean') return false;
         if (typeof property.defaultValue === 'number') return 0;
-        return ''; // Default empty for select
-      default: return ''; // Default empty for other types
+        return ''; 
+      default: return ''; 
     }
   }
 
@@ -118,17 +116,15 @@ const getCoercedValue = (property: ComponentProperty, formValue: any): any => {
       const numVal = parseFloat(formValue);
       return isNaN(numVal) ? (property.defaultValue ?? 0) : numVal;
     case 'select':
-      // Check if the property's defaultValue indicates a boolean type
       if (typeof property.defaultValue === 'boolean') {
         return formValue === 'true';
       }
-      // Check if the property's defaultValue indicates a number type
       if (typeof property.defaultValue === 'number') {
         const selectedNumVal = parseFloat(formValue);
         return isNaN(selectedNumVal) ? property.defaultValue : selectedNumVal;
       }
-      return formValue; // For string-based select values
-    default:
+      return formValue; 
+    default: // Including 'file', 'text', 'textarea', 'url', 'color'
       return formValue;
   }
 };
@@ -136,17 +132,14 @@ const getCoercedValue = (property: ComponentProperty, formValue: any): any => {
 const getInitialFormValue = (property: ComponentProperty, existingProps: Record<string, any>, defaultProps: Record<string, any>): any => {
   let value = existingProps[property.name];
 
-  // If existing value is undefined, use the default prop value
   if (value === undefined) {
     value = defaultProps[property.name];
   }
   
-  // If value is still undefined (no existing and no default), use property-specific default
   if (value === undefined) {
     value = property.defaultValue;
   }
 
-  // Special handling for boolean selects for form representation
   if (property.type === 'select' && typeof value === 'boolean') {
     return String(value);
   }
@@ -165,7 +158,7 @@ const PropertyEditor: React.FC = () => {
   
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
 
-  const { control, handleSubmit, reset } = useForm({});
+  const { control, handleSubmit, reset, watch } = useForm({});
   const prevEditingComponentIdRef = useRef<string | null | undefined>();
 
   useEffect(() => {
@@ -176,13 +169,7 @@ const PropertyEditor: React.FC = () => {
           initialFormValues[prop.name] = getInitialFormValue(prop, editingComponent.props, definition.defaultProps);
         });
 
-        // Special handling for ImageElement src initialization for the form
         if (editingComponent.type === 'ImageElement') {
-            // The 'src' form field is for the file data URI
-            // The 'alt', 'width', 'height' etc. are regular props.
-            // If props.src is already a data URI (uploaded), set it to form's src.
-            // If it's an external URL (which we removed), it wouldn't be a data URI.
-            // Default to empty string for form's src if editingComponent.props.src is not a Data URI.
              initialFormValues['src'] = (typeof editingComponent.props.src === 'string' && editingComponent.props.src.startsWith('data:image')) 
                                         ? editingComponent.props.src 
                                         : '';
@@ -198,24 +185,33 @@ const PropertyEditor: React.FC = () => {
 
   const onSubmit = (data: Record<string, any>) => { 
     if (editingComponent && definition) {
-      let componentFinalProps: Record<string, any> = { ...(editingComponent.props || {}) }; 
+      const componentFinalProps: Record<string, any> = {};
 
       definition.properties.forEach(prop => {
         const formValue = data[prop.name];
         componentFinalProps[prop.name] = getCoercedValue(prop, formValue);
       });
-
-      // Special handling for ImageElement src:
-      // If data.src (from file input) is a new Data URI, use it.
-      // Otherwise, retain the existing src prop if no new file was uploaded.
+      
       if (editingComponent.type === 'ImageElement') {
-        if (typeof data.src === 'string' && data.src.startsWith('data:image')) {
-          componentFinalProps.src = data.src;
-        } else if (componentFinalProps.src === undefined || componentFinalProps.src === '') {
-           // If no new file and existing src is empty/undefined, ensure it stays empty or uses default.
-           componentFinalProps.src = editingComponent.props.src || definition.defaultProps.src || '';
+        const newFileSrc = data.src; // Value from the file input field in the form
+        const existingSrc = editingComponent.props.src;
+        
+        // Determine if the existing source is a valid one (Data URI or HTTP URL)
+        const existingValidSrc = (typeof existingSrc === 'string' && 
+                                 (existingSrc.startsWith('data:image') /* || existingSrc.startsWith('http') */)) // We removed http support for src
+                                 ? existingSrc
+                                 : null;
+
+        if (typeof newFileSrc === 'string' && newFileSrc.startsWith('data:image')) {
+          // New file uploaded and processed to Data URI
+          componentFinalProps.src = newFileSrc;
+        } else if (existingValidSrc) {
+          // No new valid file, but there was an existing valid src (which was a Data URI)
+          componentFinalProps.src = existingValidSrc;
+        } else {
+          // No new valid file and no existing valid src, so use default (empty string)
+          componentFinalProps.src = definition.defaultProps.src || '';
         }
-        // If data.src is empty AND componentFinalProps.src already has a valid value (from editingComponent.props.src), it will be retained.
       }
       
       updateComponentProps(editingComponent.id, componentFinalProps);
@@ -260,7 +256,7 @@ const PropertyEditor: React.FC = () => {
               {definition.properties.map(prop => (
                 <FormField key={prop.name} property={prop} control={control} />
               ))}
-              <Button type="submit" className="w-full mt-4">
+              <Button type="submit" className="w-full mt-2">
                 Save Changes
               </Button>
             </form>
@@ -272,3 +268,4 @@ const PropertyEditor: React.FC = () => {
 };
 
 export default PropertyEditor;
+
