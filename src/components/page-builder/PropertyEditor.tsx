@@ -28,10 +28,7 @@ const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ pro
         name={name}
         control={control}
         render={({ field }) => {
-          const valuePropForInput = type === 'file' ? undefined : (field.value ?? '');
-          // For file inputs, 'value' must be undefined or it can cause issues.
-          // RHF handles file input state internally via field.onChange.
-          const fieldProps = { ...field, placeholder, id: name, value: type === 'file' ? undefined : valuePropForInput };
+          const fieldProps = { ...field, placeholder, id: name, value: type === 'file' ? undefined : (field.value ?? '') };
           
           switch (type) {
             case 'text':
@@ -86,8 +83,6 @@ const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ pro
                       field.onChange(''); 
                     }
                   }}
-                  // Pass field props, but ensure `value` is not directly set for file inputs
-                  // RHF handles the value internally for controlled file inputs via `field.onChange`
                   {...{...field, value: undefined }}
                 />
               );
@@ -128,7 +123,7 @@ const getCoercedValue = (property: ComponentProperty, formValue: any): any => {
         return isNaN(selectedNumVal) ? property.defaultValue : selectedNumVal;
       }
       return formValue; 
-    default: // Including 'file', 'text', 'textarea', 'url', 'color'
+    default: 
       return formValue;
   }
 };
@@ -172,8 +167,6 @@ const PropertyEditor: React.FC = () => {
       });
 
       if (editingComponent.type === 'ImageElement') {
-           // Ensure 'src' field for react-hook-form is initialized based on existing props.src (Data URI)
-           // If props.src is not a Data URI or is empty, the 'src' form field should be empty.
            initialFormValues['src'] = (typeof editingComponent.props.src === 'string' && editingComponent.props.src.startsWith('data:image')) 
                                       ? editingComponent.props.src 
                                       : '';
@@ -194,21 +187,15 @@ const PropertyEditor: React.FC = () => {
       });
       
       if (editingComponent.type === 'ImageElement') {
-        const formDataSrc = data.src; // Value from RHF's state for the 'src' field (should be Data URI or empty, or fakepath)
-        const currentComponentSrc = editingComponent.props.src; // Current src on the component instance
+        const formDataSrc = data.src; 
+        const currentComponentSrc = editingComponent.props.src; 
         let determinedSrc = '';
 
         if (typeof formDataSrc === 'string' && formDataSrc.startsWith('data:image')) {
-          // If form state for 'src' (from file input) is a Data URI, use it.
           determinedSrc = formDataSrc;
         } else if (typeof currentComponentSrc === 'string' && currentComponentSrc.startsWith('data:image')) {
-          // Else, if form state isn't a new Data URI, but the component already had one, keep the existing one.
-          // This handles cases where user changes other fields but doesn't re-upload/change the image.
-          // It also guards against 'fakepath' being used from data.src if no new file was selected.
           determinedSrc = currentComponentSrc;
         }
-        // If neither of the above, determinedSrc remains '', leading to placeholder (or default src if defined).
-        // Ensure to fall back to the definition's default src if nothing else applies.
         componentFinalProps.src = determinedSrc || (definition.defaultProps?.src ?? '');
       }
       
@@ -250,12 +237,11 @@ const PropertyEditor: React.FC = () => {
       <CardContent className="p-0 flex-grow overflow-hidden">
         <ScrollArea className="h-full">
           <div className="p-4">
-            {/* Add key to force re-mount and re-initialization of form when editingComponent changes */}
             <form key={editingComponent.id || 'no-component-selected'} onSubmit={handleSubmit(onSubmit)}>
               {definition.properties.map(prop => (
                 <FormField key={prop.name} property={prop} control={control} />
               ))}
-              <Button type="submit" className="w-full mt-4">
+              <Button type="submit" className="w-full mt-2">
                 Save Changes
               </Button>
             </form>
