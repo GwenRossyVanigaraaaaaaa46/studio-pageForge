@@ -172,6 +172,8 @@ const PropertyEditor: React.FC = () => {
       });
 
       if (editingComponent.type === 'ImageElement') {
+           // Ensure 'src' field for react-hook-form is initialized based on existing props.src (Data URI)
+           // If props.src is not a Data URI or is empty, the 'src' form field should be empty.
            initialFormValues['src'] = (typeof editingComponent.props.src === 'string' && editingComponent.props.src.startsWith('data:image')) 
                                       ? editingComponent.props.src 
                                       : '';
@@ -192,21 +194,22 @@ const PropertyEditor: React.FC = () => {
       });
       
       if (editingComponent.type === 'ImageElement') {
-        const formDataSrc = data.src; // Value from RHF's state for the 'src' field (should be Data URI or empty)
+        const formDataSrc = data.src; // Value from RHF's state for the 'src' field (should be Data URI or empty, or fakepath)
         const currentComponentSrc = editingComponent.props.src; // Current src on the component instance
         let determinedSrc = '';
 
         if (typeof formDataSrc === 'string' && formDataSrc.startsWith('data:image')) {
           // If form state for 'src' (from file input) is a Data URI, use it.
-          // This covers new uploads or cases where reset correctly populated it.
           determinedSrc = formDataSrc;
         } else if (typeof currentComponentSrc === 'string' && currentComponentSrc.startsWith('data:image')) {
-          // Else, if form state isn't a Data URI, but the component already had one, keep the existing one.
-          // This handles cases where user changes other fields but doesn't re-upload the image.
+          // Else, if form state isn't a new Data URI, but the component already had one, keep the existing one.
+          // This handles cases where user changes other fields but doesn't re-upload/change the image.
+          // It also guards against 'fakepath' being used from data.src if no new file was selected.
           determinedSrc = currentComponentSrc;
         }
-        // If neither of the above, determinedSrc remains '', leading to placeholder.
-        componentFinalProps.src = determinedSrc;
+        // If neither of the above, determinedSrc remains '', leading to placeholder (or default src if defined).
+        // Ensure to fall back to the definition's default src if nothing else applies.
+        componentFinalProps.src = determinedSrc || (definition.defaultProps?.src ?? '');
       }
       
       updateComponentProps(editingComponent.id, componentFinalProps);
@@ -252,7 +255,7 @@ const PropertyEditor: React.FC = () => {
               {definition.properties.map(prop => (
                 <FormField key={prop.name} property={prop} control={control} />
               ))}
-              <Button type="submit" className="w-full mt-2">
+              <Button type="submit" className="w-full mt-4">
                 Save Changes
               </Button>
             </form>

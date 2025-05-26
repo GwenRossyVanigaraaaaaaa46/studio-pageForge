@@ -11,8 +11,6 @@ interface ImageElementProps {
   height?: number;
   objectFit: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   alignment?: 'left' | 'center' | 'right';
-  linkUrl?: string;
-  linkOpenInNewTab?: boolean;
 }
 
 const ImageElement: React.FC<ImageElementProps> = ({
@@ -22,8 +20,6 @@ const ImageElement: React.FC<ImageElementProps> = ({
   height = 400,
   objectFit = 'cover',
   alignment = 'center',
-  linkUrl,
-  linkOpenInNewTab = true,
 }) => {
   const imageContainerStyle = {
     width: `${width}px`,
@@ -83,18 +79,7 @@ const ImageElement: React.FC<ImageElementProps> = ({
 
   return (
     <div className={`p-4 w-full flex items-center ${alignmentClasses[alignment]}`}>
-      {linkUrl ? (
-        <a
-          href={linkUrl}
-          target={linkOpenInNewTab ? '_blank' : '_self'}
-          rel={linkOpenInNewTab ? 'noopener noreferrer' : undefined}
-          className="cursor-pointer"
-        >
-          {imageDisplay}
-        </a>
-      ) : (
-        imageDisplay
-      )}
+      {imageDisplay}
     </div>
   );
 };

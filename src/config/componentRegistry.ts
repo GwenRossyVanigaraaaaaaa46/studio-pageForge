@@ -98,8 +98,6 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
       height: 400,
       objectFit: 'cover',
       alignment: 'center',
-      linkUrl: '',
-      linkOpenInNewTab: true,
     },
     properties: [
       { name: 'src', label: 'Image File', type: 'file', defaultValue: '' },
@@ -128,17 +126,6 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
           { label: 'Left', value: 'left' },
           { label: 'Center', value: 'center' },
           { label: 'Right', value: 'right' },
-        ],
-      },
-      { name: 'linkUrl', label: 'Link URL (Optional)', type: 'text', defaultValue: '', placeholder: 'https://example.com/page' },
-      {
-        name: 'linkOpenInNewTab',
-        label: 'Open Link in New Tab',
-        type: 'select',
-        defaultValue: true,
-        options: [
-          { label: 'Yes', value: 'true' },
-          { label: 'No', value: 'false' },
         ],
       },
     ],
