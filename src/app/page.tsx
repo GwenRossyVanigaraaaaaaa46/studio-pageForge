@@ -1,5 +1,5 @@
 
-"use client"; 
+"use client";
 import { useState } from 'react';
 import { PageBuilderProvider } from '@/contexts/PageBuilderContext';
 import ComponentLibrary from '@/components/page-builder/ComponentLibrary';
@@ -36,7 +36,7 @@ export default function PageForgeBuilder() {
             </Button>
           </div>
         </header>
-        
+
         <main className="flex flex-1 overflow-hidden">
           {/* Wrapper for Component Library Panel and its Toggle Button */}
           <div className={cn(
@@ -46,19 +46,25 @@ export default function PageForgeBuilder() {
           )}>
             {/* Component Library Content Area */}
             <div className={cn(
-              "flex-grow overflow-hidden transition-all duration-200 ease-in-out",
-              isComponentLibraryOpen ? "p-4 opacity-100" : "w-0 p-0 opacity-0" // Shrink and fade content
+              "flex-grow overflow-hidden", // Let ComponentLibrary card fill this space
+              "transition-all duration-300 ease-in-out", // Smooth transition for width/opacity
+              isComponentLibraryOpen ? "w-auto opacity-100" : "w-0 opacity-0"
             )}>
               {/* Conditionally render to ensure it's removed from layout when hidden, aiding transitions */}
               {isComponentLibraryOpen && <ComponentLibrary />}
             </div>
 
-            {/* Toggle Button Area - always takes up w-12 space within the wrapper */}
-            <div className="flex-shrink-0 h-full w-12 flex items-center justify-center border-l border-border">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={toggleComponentLibrary} 
+            {/* Toggle Button Area */}
+            <div className={cn(
+                "flex-shrink-0 flex items-center justify-center",
+                // When panel is open, button area is fixed width.
+                // When closed, it expands to fill the collapsed container.
+                isComponentLibraryOpen ? "w-12" : "w-full h-full"
+            )}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleComponentLibrary}
                 className="h-10 w-10 rounded-md hover:bg-muted"
                 aria-label={isComponentLibraryOpen ? "Collapse Component Library" : "Expand Component Library"}
               >
@@ -66,20 +72,20 @@ export default function PageForgeBuilder() {
               </Button>
             </div>
           </div>
-          
+
           {/* Canvas Area */}
           <section className="flex-1 h-full overflow-y-auto bg-background/50">
             <Canvas />
           </section>
 
-          {/* Property Editor Panel (remains as before, controlled by lg:block) */}
+          {/* Property Editor Panel */}
           <aside className="w-80 h-full border-l border-border bg-card p-4 hidden lg:block">
             <div className="h-full">
                 <PropertyEditor />
             </div>
           </aside>
         </main>
-        
+
         <footer className="h-10 border-t border-border flex items-center justify-center text-xs text-muted-foreground bg-card">
           <p>&copy; {new Date().getFullYear()} PageForge. Built with Next.js & ShadCN UI.</p>
         </footer>
