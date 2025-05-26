@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { X, Settings } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
 
 const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
   const { name, label, type, options, placeholder } = property; 
@@ -27,7 +28,6 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
         name={name}
         control={control}
         render={({ field }) => {
-          // For file inputs, the value should be managed by the input itself, not pre-filled by field.value
           const value = type === 'file' ? undefined : (field.value ?? '');
           const fieldProps = { ...field, placeholder, id: name, value };
           
@@ -71,21 +71,19 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                 <Input
                   type="file"
                   id={name}
-                  accept="image/*" // Only accept image files
-                  // Remove field.value here as it's not standard for file inputs
+                  accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
                       const reader = new FileReader();
                       reader.onload = () => {
-                        field.onChange(reader.result as string); // Store Data URI
+                        field.onChange(reader.result as string); 
                       };
                       reader.readAsDataURL(file);
                     } else {
-                      field.onChange(''); // Clear if no file selected
+                      field.onChange(''); 
                     }
                   }}
-                  // Omit value prop from fieldProps for file input
                   {...{...field, value: undefined, placeholder, id:name}}
                 />
               );
@@ -106,10 +104,11 @@ const PropertyEditor: React.FC = () => {
     closePropertyEditor, 
     isPropertyEditorPanelOpen 
   } = usePageBuilder();
+  const { toast } = useToast();
   
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
 
-  const { control, handleSubmit, reset, watch } = useForm({});
+  const { control, handleSubmit, reset } = useForm({}); // Removed watch from here as it's not used for live updates anymore
 
   const prevEditingComponentIdRef = useRef<string | null | undefined>();
 
@@ -118,17 +117,12 @@ const PropertyEditor: React.FC = () => {
       if (editingComponent.id !== prevEditingComponentIdRef.current || !prevEditingComponentIdRef.current) {
         let initialFormValues = { ...definition.defaultProps, ...editingComponent.props };
         if (definition.type === 'ImageElement') {
-          // If src is an HTTP/S URL, populate imageUrl field, otherwise clear it
           const currentSrc = editingComponent.props.src;
           if (typeof currentSrc === 'string' && (currentSrc.startsWith('http://') || currentSrc.startsWith('https://'))) {
             initialFormValues.imageUrl = currentSrc;
-            // Do not set initialFormValues.src to the URL if it's a file input representation
-            // The `src` prop in editingComponent.props IS the source of truth.
-            // If it was a URL, it will be in imageUrl. If it was a DataURI, it's in initialFormValues.src.
           } else {
-            initialFormValues.imageUrl = ''; // Clear if src is not a URL (e.g., it's a Data URI or empty)
+            initialFormValues.imageUrl = ''; 
           }
-           // if src is a dataURI, it's already in initialFormValues.src from spread
         }
         reset(initialFormValues);
         prevEditingComponentIdRef.current = editingComponent.id;
@@ -139,152 +133,62 @@ const PropertyEditor: React.FC = () => {
     }
   }, [editingComponent, definition, reset, isPropertyEditorPanelOpen]);
 
-
-  const watchedValues = watch();
-  useEffect(() => {
-    if (editingComponent && definition && Object.keys(watchedValues).length > 0) {
-      const coercedProps: Record<string, any> = { ...watchedValues };
-
-      definition.properties.forEach(prop => {
-        const formValue = watchedValues[prop.name];
-        
-        if (formValue === undefined || formValue === null) { 
-            coercedProps[prop.name] = formValue;
-            return;
-        }
-        // For file types, the value is already a Data URI string or empty string
-        if (prop.type === 'file') {
-          coercedProps[prop.name] = formValue;
-          return;
-        }
-
-        if (prop.type === 'number') {
-          if (typeof formValue === 'string') {
-            const numVal = parseFloat(formValue);
-            coercedProps[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
-          } else if (typeof formValue === 'number') {
-            coercedProps[prop.name] = formValue; 
-          } else {
-             coercedProps[prop.name] = (prop.defaultValue ?? 0); 
-          }
-        } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') {
-          if (typeof formValue === 'string') {
-            const numVal = parseInt(formValue, 10);
-            coercedProps[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
-          } else if (typeof formValue === 'number') {
-            coercedProps[prop.name] = formValue; 
-          } else {
-            coercedProps[prop.name] = prop.defaultValue; 
-          }
-        }
-      });
-      
-      let propsAreDifferent = false;
-      const currentProps = editingComponent.props;
-      const relevantCoercedProps: Record<string, any> = {};
-      const finalComponentProps: Record<string, any> = {}; // Props to be stored for the component
-
-      if (definition.type === 'ImageElement') {
-        // Prioritize imageUrl if present, otherwise use src (from file upload)
-        if (coercedProps.imageUrl && typeof coercedProps.imageUrl === 'string' && coercedProps.imageUrl.trim() !== '') {
-          finalComponentProps.src = coercedProps.imageUrl;
-        } else if (coercedProps.src && typeof coercedProps.src === 'string' && (coercedProps.src.startsWith('data:image') || coercedProps.src === '')) {
-          finalComponentProps.src = coercedProps.src;
-        } else {
-          finalComponentProps.src = currentProps.src || ''; // Fallback to existing or empty
-        }
-        // Include other ImageElement props
-        finalComponentProps.alt = coercedProps.alt ?? definition.defaultProps.alt;
-        finalComponentProps.width = coercedProps.width ?? definition.defaultProps.width;
-        finalComponentProps.height = coercedProps.height ?? definition.defaultProps.height;
-        finalComponentProps.objectFit = coercedProps.objectFit ?? definition.defaultProps.objectFit;
-
-        // Check for differences against currentProps
-        for (const key of Object.keys(finalComponentProps)) {
-          if (finalComponentProps[key] !== currentProps[key]) {
-            propsAreDifferent = true;
-            break;
-          }
-        }
-         // Check if keys in currentProps were removed (e.g. src cleared)
-        if (!propsAreDifferent && Object.keys(currentProps).some(k => !finalComponentProps.hasOwnProperty(k) && currentProps[k])) {
-            propsAreDifferent = true;
-        }
-
-
-      } else { // For other component types
-        for (const prop of definition.properties) {
-          const key = prop.name;
-          let valFromForm = coercedProps[key];
-          let valFromState = currentProps[key];
-          
-          if ((valFromForm === undefined || valFromForm === null || valFromForm === '') && (valFromState === undefined || valFromState === null || valFromState === '')) {
-               // Both are effectively "empty"
-          } else if (valFromForm !== valFromState) {
-            propsAreDifferent = true;
-          }
-          finalComponentProps[key] = valFromForm;
-        }
-        if (!propsAreDifferent && Object.keys(currentProps).some(k => !finalComponentProps.hasOwnProperty(k) && currentProps[k])) {
-            propsAreDifferent = true;
-        }
-      }
-      
-      if (propsAreDifferent) {
-        updateComponentProps(editingComponent.id, finalComponentProps);
-      }
-    }
-  }, [watchedValues, editingComponent, definition, updateComponentProps, reset]);
-
-
-  const onSubmit = (data: Record<string, any>) => { // Manual submit (if we had a save button)
+  const onSubmit = (data: Record<string, any>) => { 
     if (editingComponent && definition) {
-      const finalData: Record<string, any> = {};
+      const finalComponentProps: Record<string, any> = {};
 
       if (definition.type === 'ImageElement') {
         if (data.imageUrl && typeof data.imageUrl === 'string' && data.imageUrl.trim() !== '') {
-          finalData.src = data.imageUrl;
+          finalComponentProps.src = data.imageUrl;
         } else if (data.src && typeof data.src === 'string' && data.src.startsWith('data:image')) {
-          finalData.src = data.src;
+          finalComponentProps.src = data.src;
         } else {
-          finalData.src = editingComponent.props.src || ''; // fallback
+          finalComponentProps.src = editingComponent.props.src || definition.defaultProps.src || '';
         }
-        finalData.alt = data.alt ?? definition.defaultProps.alt;
-        finalData.width = data.width ?? definition.defaultProps.width;
-        finalData.height = data.height ?? definition.defaultProps.height;
-        finalData.objectFit = data.objectFit ?? definition.defaultProps.objectFit;
+        finalComponentProps.alt = data.alt ?? definition.defaultProps.alt;
+        finalComponentProps.width = data.width ?? definition.defaultProps.width;
+        finalComponentProps.height = data.height ?? definition.defaultProps.height;
+        finalComponentProps.objectFit = data.objectFit ?? definition.defaultProps.objectFit;
       } else {
         definition.properties.forEach(prop => {
-          const formValue = data[prop.name];
-           if (formValue === undefined || formValue === null) {
-              finalData[prop.name] = formValue; 
+          let formValue = data[prop.name];
+          
+          if (formValue === undefined || formValue === null) {
+              finalComponentProps[prop.name] = formValue;
               return;
           }
-          if (prop.type === 'file') { // Should be Data URI string
-             finalData[prop.name] = formValue;
+          if (prop.type === 'file') {
+             finalComponentProps[prop.name] = formValue;
              return;
           }
-
           if (prop.type === 'number') {
              if (typeof formValue === 'string') {
               const numVal = parseFloat(formValue);
-              finalData[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
+              finalComponentProps[prop.name] = isNaN(numVal) ? (prop.defaultValue ?? 0) : numVal;
+            } else if (typeof formValue === 'number') {
+              finalComponentProps[prop.name] = formValue;
             } else {
-              finalData[prop.name] = formValue; 
+              finalComponentProps[prop.name] = (prop.defaultValue ?? 0);
             }
           } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') {
             if (typeof formValue === 'string') {
               const numVal = parseInt(formValue, 10);
-              finalData[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
+              finalComponentProps[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
+            } else if (typeof formValue === 'number') {
+              finalComponentProps[prop.name] = formValue;
             } else {
-              finalData[prop.name] = formValue; 
+              finalComponentProps[prop.name] = prop.defaultValue;
             }
           } else {
-              finalData[prop.name] = formValue;
+              finalComponentProps[prop.name] = formValue;
           }
         });
       }
-      updateComponentProps(editingComponent.id, finalData);
+      updateComponentProps(editingComponent.id, finalComponentProps);
+      toast({
+        title: "Properties Saved",
+        description: `${definition.name} properties have been updated.`,
+      });
     }
   };
 
@@ -317,12 +221,13 @@ const PropertyEditor: React.FC = () => {
       </CardHeader>
       <CardContent className="p-0 flex-grow">
         <ScrollArea className="h-full p-4">
-          {/* The form submits on change due to the useEffect watching `watchedValues` */}
-          {/* Explicit onSubmit is mostly for if we had a manual "Save" button */}
-          <form onSubmit={handleSubmit(onSubmit)} onChange={() => handleSubmit(onSubmit)()}>
+          <form onSubmit={handleSubmit(onSubmit)}>
             {definition.properties.map(prop => (
-              <FormField key={prop.name} property={prop} control={control} form={{control, handleSubmit, reset, watch} as any} />
+              <FormField key={prop.name} property={prop} control={control} form={{control, handleSubmit, reset} as any} />
             ))}
+            <Button type="submit" className="w-full mt-6">
+              Save Changes
+            </Button>
           </form>
         </ScrollArea>
       </CardContent>
