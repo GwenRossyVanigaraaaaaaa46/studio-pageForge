@@ -17,7 +17,7 @@ import { X, Settings } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 
 const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
-  const { name, label, type, options, placeholder } = property; 
+  const { name, label, type, options, placeholder, defaultValue } = property; 
 
   return (
     <div className="mb-4">
@@ -27,9 +27,12 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
       <Controller
         name={name}
         control={control}
+        // defaultValue is primarily for initial render if not using reset, reset is preferred for dynamic initial values
         render={({ field }) => {
-          const value = type === 'file' ? undefined : (field.value ?? '');
-          const fieldProps = { ...field, placeholder, id: name, value };
+          // For file inputs, react-hook-form's `field.value` will hold the data URI string after selection or reset.
+          // The actual <input type="file" /> DOM element's `value` prop should not be set directly with this string.
+          const valuePropForInput = type === 'file' ? undefined : (field.value ?? '');
+          const fieldProps = { ...field, placeholder, id: name, value: valuePropForInput };
           
           switch (type) {
             case 'text':
@@ -43,7 +46,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                         value={field.value === null || field.value === undefined || isNaN(parseFloat(field.value as string)) ? '' : String(field.value)}
                         onChange={e => {
                             const numVal = parseFloat(e.target.value);
-                            field.onChange(isNaN(numVal) ? (property.defaultValue ?? 0) : numVal);
+                            field.onChange(isNaN(numVal) ? (defaultValue ?? 0) : numVal);
                         }} 
                      />;
             case 'textarea':
@@ -52,7 +55,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
               return (
                 <Select 
                   onValueChange={(val) => field.onChange(val)} 
-                  value={String(field.value ?? property.defaultValue ?? '')} 
+                  value={String(field.value ?? defaultValue ?? '')} 
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
@@ -84,7 +87,9 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                       field.onChange(''); 
                     }
                   }}
-                  {...{...field, value: undefined, placeholder, id:name}}
+                  // Pass all field props from Controller, but ensure `value` is not directly set for file input from field.value
+                  // RHF handles the value internally for controlled file inputs.
+                  {...{...field, value: undefined }}
                 />
               );
             default:
@@ -108,59 +113,62 @@ const PropertyEditor: React.FC = () => {
   
   const definition = editingComponent ? getComponentDefinition(editingComponent.type) : null;
 
-  const { control, handleSubmit, reset } = useForm({}); // Removed watch from here as it's not used for live updates anymore
-
+  const { control, handleSubmit, reset } = useForm({});
   const prevEditingComponentIdRef = useRef<string | null | undefined>();
 
   useEffect(() => {
     if (editingComponent && definition) {
       if (editingComponent.id !== prevEditingComponentIdRef.current || !prevEditingComponentIdRef.current) {
-        let initialFormValues = { ...definition.defaultProps, ...editingComponent.props };
+        let initialFormValues: Record<string, any> = { ...definition.defaultProps, ...editingComponent.props };
+        
         if (definition.type === 'ImageElement') {
           const currentSrc = editingComponent.props.src;
           if (typeof currentSrc === 'string' && (currentSrc.startsWith('http://') || currentSrc.startsWith('https://'))) {
-            initialFormValues.imageUrl = currentSrc;
-          } else {
-            initialFormValues.imageUrl = ''; 
+            initialFormValues.imageUrl = currentSrc; // Populate imageUrl field if src is a URL
+            initialFormValues.src = ''; // Clear the 'src' field (for file upload) if current image is from URL
+          } else { // currentSrc is a Data URI or empty
+            initialFormValues.imageUrl = ''; // Clear imageUrl field
+            initialFormValues.src = currentSrc; // 'src' field (for file upload) gets the Data URI or empty string
           }
         }
         reset(initialFormValues);
         prevEditingComponentIdRef.current = editingComponent.id;
       }
-    } else if (prevEditingComponentIdRef.current || (!editingComponent && isPropertyEditorPanelOpen)) { 
+    } else if (!editingComponent && prevEditingComponentIdRef.current) { 
       reset({}); 
       prevEditingComponentIdRef.current = null;
     }
-  }, [editingComponent, definition, reset, isPropertyEditorPanelOpen]);
+  }, [editingComponent, definition, reset]);
+
 
   const onSubmit = (data: Record<string, any>) => { 
     if (editingComponent && definition) {
       const finalComponentProps: Record<string, any> = {};
 
       if (definition.type === 'ImageElement') {
+        // Priority: URL input, then file input (data.src), then existing, then default
         if (data.imageUrl && typeof data.imageUrl === 'string' && data.imageUrl.trim() !== '') {
-          finalComponentProps.src = data.imageUrl;
+          finalComponentProps.src = data.imageUrl.trim();
         } else if (data.src && typeof data.src === 'string' && data.src.startsWith('data:image')) {
           finalComponentProps.src = data.src;
         } else {
+          // Fallback to existing src if no new valid source is provided
           finalComponentProps.src = editingComponent.props.src || definition.defaultProps.src || '';
         }
         finalComponentProps.alt = data.alt ?? definition.defaultProps.alt;
         finalComponentProps.width = data.width ?? definition.defaultProps.width;
         finalComponentProps.height = data.height ?? definition.defaultProps.height;
         finalComponentProps.objectFit = data.objectFit ?? definition.defaultProps.objectFit;
-      } else {
+
+      } else { // For other component types
         definition.properties.forEach(prop => {
           let formValue = data[prop.name];
           
           if (formValue === undefined || formValue === null) {
-              finalComponentProps[prop.name] = formValue;
+              finalComponentProps[prop.name] = formValue; // Allow undefined/null to be set if intended
               return;
           }
-          if (prop.type === 'file') {
-             finalComponentProps[prop.name] = formValue;
-             return;
-          }
+
           if (prop.type === 'number') {
              if (typeof formValue === 'string') {
               const numVal = parseFloat(formValue);
@@ -170,7 +178,7 @@ const PropertyEditor: React.FC = () => {
             } else {
               finalComponentProps[prop.name] = (prop.defaultValue ?? 0);
             }
-          } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') {
+          } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') { // Coercion for numeric selects
             if (typeof formValue === 'string') {
               const numVal = parseInt(formValue, 10);
               finalComponentProps[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
@@ -179,7 +187,7 @@ const PropertyEditor: React.FC = () => {
             } else {
               finalComponentProps[prop.name] = prop.defaultValue;
             }
-          } else {
+          } else { // For text, textarea, file (data URI string), etc.
               finalComponentProps[prop.name] = formValue;
           }
         });
