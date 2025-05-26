@@ -2,7 +2,7 @@
 "use client";
 
 import type React from 'react';
-import Image from 'next/image';
+import Image from 'next/image'; // Keep NextImage for actual images
 
 interface ImageElementProps {
   src: string;
@@ -25,8 +25,55 @@ const ImageElement: React.FC<ImageElementProps> = ({
   linkUrl,
   linkOpenInNewTab = true,
 }) => {
-  const placeholderSrc = `https://placehold.co/${width}x${height}.png`;
-  const imageSrc = src || placeholderSrc;
+  const imageContainerStyle = {
+    width: `${width}px`,
+    height: `${height}px`,
+    maxWidth: '100%', // Ensure responsiveness within its container
+  };
+
+  const imageContent = src ? (
+    <div style={imageContainerStyle} className="relative overflow-hidden rounded-md shadow-md">
+      <Image
+        src={src}
+        alt={alt || 'User uploaded image'}
+        layout="fill"
+        objectFit={objectFit}
+        className="transition-transform duration-300 ease-in-out hover:scale-105"
+        data-ai-hint="abstract modern"
+      />
+    </div>
+  ) : (
+    <div
+      style={imageContainerStyle}
+      className="bg-muted border border-dashed border-border rounded-md shadow-inner flex items-center justify-center text-muted-foreground p-2"
+      data-ai-hint="placeholder empty"
+    >
+      <div className="text-center">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="32"
+          height="32"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="lucide lucide-image-plus mx-auto mb-1 opacity-60"
+        >
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" />
+          <line x1="16" x2="22" y1="5" y2="5" />
+          <line x1="19" x2="19" y1="2" y2="8" />
+          <circle cx="9" cy="9" r="2" />
+          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+        </svg>
+        <p className="text-xs font-medium">No Image</p>
+        <p className="text-xs opacity-80">
+          ({width} x {height})
+        </p>
+      </div>
+    </div>
+  );
 
   const alignmentClasses = {
     left: 'justify-start',
@@ -34,21 +81,8 @@ const ImageElement: React.FC<ImageElementProps> = ({
     right: 'justify-end',
   };
 
-  const imageContent = (
-    <div style={{ width: `${width}px`, height: `${height}px`, maxWidth: '100%' }} className="relative overflow-hidden rounded-md shadow-md">
-      <Image
-        src={imageSrc}
-        alt={alt || 'Placeholder Image'}
-        layout="fill"
-        objectFit={objectFit}
-        className="transition-transform duration-300 ease-in-out hover:scale-105"
-        data-ai-hint="abstract modern"
-      />
-    </div>
-  );
-
   return (
-    <div className={`p-4 w-full flex items-center ${alignmentClasses[alignment]}`}>
+    <div className={`p-4 w-full flex ${alignmentClasses[alignment]}`}>
       {linkUrl ? (
         <a
           href={linkUrl}
