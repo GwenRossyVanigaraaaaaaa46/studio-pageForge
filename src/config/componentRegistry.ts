@@ -92,7 +92,7 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     name: 'Image',
     icon: ImageIcon,
     defaultProps: {
-      src: '', // Will hold Data URI for uploaded images, or fallback to placeholder
+      src: '', // This is the final src for the component (Data URI or URL)
       alt: 'My Awesome Image',
       width: 600,
       height: 400,
@@ -100,6 +100,7 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     },
     properties: [
       { name: 'src', label: 'Image File', type: 'file', defaultValue: '' },
+      { name: 'imageUrl', label: 'Or Image URL', type: 'text', defaultValue: '', placeholder: 'e.g., https://example.com/image.png' },
       { name: 'alt', label: 'Alt Text', type: 'text', defaultValue: 'My Awesome Image', placeholder: 'Image description' },
       { name: 'width', label: 'Width (px)', type: 'number', defaultValue: 600, placeholder: '600' },
       { name: 'height', label: 'Height (px)', type: 'number', defaultValue: 400, placeholder: '400' },
