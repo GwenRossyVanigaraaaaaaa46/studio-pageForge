@@ -31,22 +31,22 @@ const ImageElement: React.FC<ImageElementProps> = ({
     maxWidth: '100%', // Ensure responsiveness within its container
   };
 
-  const imageContent = src ? (
-    <div style={imageContainerStyle} className="relative overflow-hidden rounded-md shadow-md">
+  const imageDisplay = src?.trim() ? (
+    <div style={imageContainerStyle} className="relative overflow-hidden rounded-md shadow-md transition-transform duration-300 ease-in-out hover:scale-105">
       <Image
         src={src}
         alt={alt || 'User uploaded image'}
         layout="fill"
         objectFit={objectFit}
-        className="transition-transform duration-300 ease-in-out hover:scale-105"
-        data-ai-hint="abstract modern"
+        className="transition-transform duration-300 ease-in-out"
+        data-ai-hint="abstract modern" // Example hint for actual image
       />
     </div>
   ) : (
     <div
       style={imageContainerStyle}
-      className="bg-muted border border-dashed border-border rounded-md shadow-inner flex items-center justify-center text-muted-foreground p-2"
-      data-ai-hint="placeholder empty"
+      className="bg-muted border border-dashed border-border rounded-md shadow-inner flex items-center justify-center text-muted-foreground p-2 overflow-hidden transition-transform duration-300 ease-in-out hover:scale-105"
+      data-ai-hint="placeholder empty" // Example hint for placeholder
     >
       <div className="text-center">
         <svg
@@ -67,9 +67,9 @@ const ImageElement: React.FC<ImageElementProps> = ({
           <circle cx="9" cy="9" r="2" />
           <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
         </svg>
-        <p className="text-xs font-medium">No Image</p>
+        <p className="text-xs font-medium mt-1">No Image</p>
         <p className="text-xs opacity-80">
-          ({width} x {height})
+          ({width}px x {height}px)
         </p>
       </div>
     </div>
@@ -82,7 +82,7 @@ const ImageElement: React.FC<ImageElementProps> = ({
   };
 
   return (
-    <div className={`p-4 w-full flex ${alignmentClasses[alignment]}`}>
+    <div className={`p-4 w-full flex items-center ${alignmentClasses[alignment]}`}>
       {linkUrl ? (
         <a
           href={linkUrl}
@@ -90,10 +90,10 @@ const ImageElement: React.FC<ImageElementProps> = ({
           rel={linkOpenInNewTab ? 'noopener noreferrer' : undefined}
           className="cursor-pointer"
         >
-          {imageContent}
+          {imageDisplay}
         </a>
       ) : (
-        imageContent
+        imageDisplay
       )}
     </div>
   );
