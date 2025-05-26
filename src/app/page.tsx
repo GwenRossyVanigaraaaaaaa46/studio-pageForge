@@ -12,9 +12,14 @@ import { cn } from '@/lib/utils';
 
 export default function PageForgeBuilder() {
   const [isComponentLibraryOpen, setIsComponentLibraryOpen] = useState(true);
+  const [isPropertyEditorOpen, setIsPropertyEditorOpen] = useState(true);
 
   const toggleComponentLibrary = () => {
     setIsComponentLibraryOpen(!isComponentLibraryOpen);
+  };
+
+  const togglePropertyEditor = () => {
+    setIsPropertyEditorOpen(!isPropertyEditorOpen);
   };
 
   return (
@@ -41,24 +46,21 @@ export default function PageForgeBuilder() {
           {/* Wrapper for Component Library Panel and its Toggle Button */}
           <div className={cn(
             "h-full bg-card border-r border-border flex transition-all duration-300 ease-in-out",
-            "hidden md:flex", // Panel is part of flex layout on medium screens and up
-            isComponentLibraryOpen ? "w-72" : "w-12" // Adjust width for panel content or just the button
+            "hidden md:flex", 
+            isComponentLibraryOpen ? "w-72" : "w-12"
           )}>
             {/* Component Library Content Area */}
             <div className={cn(
-              "flex-grow overflow-hidden", // Let ComponentLibrary card fill this space
-              "transition-all duration-300 ease-in-out", // Smooth transition for width/opacity
+              "flex-grow overflow-hidden", 
+              "transition-all duration-300 ease-in-out", 
               isComponentLibraryOpen ? "w-auto opacity-100" : "w-0 opacity-0"
             )}>
-              {/* Conditionally render to ensure it's removed from layout when hidden, aiding transitions */}
               {isComponentLibraryOpen && <ComponentLibrary />}
             </div>
 
             {/* Toggle Button Area */}
             <div className={cn(
                 "flex-shrink-0 flex items-center justify-center",
-                // When panel is open, button area is fixed width.
-                // When closed, it expands to fill the collapsed container.
                 isComponentLibraryOpen ? "w-12" : "w-full h-full"
             )}>
               <Button
@@ -78,12 +80,37 @@ export default function PageForgeBuilder() {
             <Canvas />
           </section>
 
-          {/* Property Editor Panel */}
-          <aside className="w-80 h-full border-l border-border bg-card p-4 hidden lg:block">
-            <div className="h-full">
-                <PropertyEditor />
+          {/* Wrapper for Property Editor Panel and its Toggle Button */}
+          <div className={cn(
+            "h-full bg-card border-l border-border flex flex-row-reverse transition-all duration-300 ease-in-out",
+            "hidden lg:flex", 
+            isPropertyEditorOpen ? "w-80" : "w-12"
+          )}>
+            {/* Property Editor Content Area */}
+            <div className={cn(
+              "flex-grow overflow-hidden",
+              "transition-all duration-300 ease-in-out",
+              isPropertyEditorOpen ? "w-auto opacity-100" : "w-0 opacity-0"
+            )}>
+              {isPropertyEditorOpen && <PropertyEditor />}
             </div>
-          </aside>
+
+            {/* Toggle Button Area (renders first in DOM with flex-row-reverse, appears on the left of the panel) */}
+            <div className={cn(
+                "flex-shrink-0 flex items-center justify-center",
+                isPropertyEditorOpen ? "w-12" : "w-full h-full"
+            )}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={togglePropertyEditor}
+                className="h-10 w-10 rounded-md hover:bg-muted"
+                aria-label={isPropertyEditorOpen ? "Collapse Property Editor" : "Expand Property Editor"}
+              >
+                {isPropertyEditorOpen ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+              </Button>
+            </div>
+          </div>
         </main>
 
         <footer className="h-10 border-t border-border flex items-center justify-center text-xs text-muted-foreground bg-card">
