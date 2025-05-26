@@ -27,10 +27,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
       <Controller
         name={name}
         control={control}
-        // defaultValue is primarily for initial render if not using reset, reset is preferred for dynamic initial values
         render={({ field }) => {
-          // For file inputs, react-hook-form's `field.value` will hold the data URI string after selection or reset.
-          // The actual <input type="file" /> DOM element's `value` prop should not be set directly with this string.
           const valuePropForInput = type === 'file' ? undefined : (field.value ?? '');
           const fieldProps = { ...field, placeholder, id: name, value: valuePropForInput };
           
@@ -46,7 +43,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                         value={field.value === null || field.value === undefined || isNaN(parseFloat(field.value as string)) ? '' : String(field.value)}
                         onChange={e => {
                             const numVal = parseFloat(e.target.value);
-                            field.onChange(isNaN(numVal) ? (defaultValue ?? 0) : numVal);
+                            field.onChange(isNaN(numVal) ? (property.defaultValue ?? 0) : numVal);
                         }} 
                      />;
             case 'textarea':
@@ -55,7 +52,7 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
               return (
                 <Select 
                   onValueChange={(val) => field.onChange(val)} 
-                  value={String(field.value ?? defaultValue ?? '')} 
+                  value={String(field.value ?? property.defaultValue ?? '')} 
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={placeholder || `Select ${label.toLowerCase()}`} />
@@ -87,8 +84,6 @@ const FormField: React.FC<FormFieldProps> = ({ property, control }) => {
                       field.onChange(''); 
                     }
                   }}
-                  // Pass all field props from Controller, but ensure `value` is not directly set for file input from field.value
-                  // RHF handles the value internally for controlled file inputs.
                   {...{...field, value: undefined }}
                 />
               );
@@ -118,17 +113,17 @@ const PropertyEditor: React.FC = () => {
 
   useEffect(() => {
     if (editingComponent && definition) {
-      if (editingComponent.id !== prevEditingComponentIdRef.current || !prevEditingComponentIdRef.current) {
+      if (editingComponent.id !== prevEditingComponentIdRef.current || (editingComponent && !prevEditingComponentIdRef.current) || (!editingComponent && prevEditingComponentIdRef.current) ) {
         let initialFormValues: Record<string, any> = { ...definition.defaultProps, ...editingComponent.props };
         
         if (definition.type === 'ImageElement') {
           const currentSrc = editingComponent.props.src;
           if (typeof currentSrc === 'string' && (currentSrc.startsWith('http://') || currentSrc.startsWith('https://'))) {
-            initialFormValues.imageUrl = currentSrc; // Populate imageUrl field if src is a URL
-            initialFormValues.src = ''; // Clear the 'src' field (for file upload) if current image is from URL
-          } else { // currentSrc is a Data URI or empty
-            initialFormValues.imageUrl = ''; // Clear imageUrl field
-            initialFormValues.src = currentSrc; // 'src' field (for file upload) gets the Data URI or empty string
+            initialFormValues.imageUrl = currentSrc; 
+            initialFormValues.src = ''; 
+          } else { 
+            initialFormValues.imageUrl = ''; 
+            initialFormValues.src = currentSrc; 
           }
         }
         reset(initialFormValues);
@@ -146,26 +141,35 @@ const PropertyEditor: React.FC = () => {
       const finalComponentProps: Record<string, any> = {};
 
       if (definition.type === 'ImageElement') {
-        // Priority: URL input, then file input (data.src), then existing, then default
-        if (data.imageUrl && typeof data.imageUrl === 'string' && data.imageUrl.trim() !== '') {
-          finalComponentProps.src = data.imageUrl.trim();
-        } else if (data.src && typeof data.src === 'string' && data.src.startsWith('data:image')) {
-          finalComponentProps.src = data.src;
+        let newSrc = ''; 
+        const formImageUrl = typeof data.imageUrl === 'string' ? data.imageUrl.trim() : '';
+        const formDataUri = typeof data.src === 'string' && data.src.startsWith('data:image') ? data.src : '';
+
+        if (formImageUrl) {
+          newSrc = formImageUrl;
+        } else if (formDataUri) {
+          newSrc = formDataUri;
         } else {
-          // Fallback to existing src if no new valid source is provided
-          finalComponentProps.src = editingComponent.props.src || definition.defaultProps.src || '';
+          const existingSrc = editingComponent.props.src;
+          if (typeof existingSrc === 'string' && (existingSrc.startsWith('http') || existingSrc.startsWith('data:image'))) {
+            newSrc = existingSrc;
+          } else {
+            newSrc = definition.defaultProps.src || ''; 
+          }
         }
+        
+        finalComponentProps.src = newSrc;
         finalComponentProps.alt = data.alt ?? definition.defaultProps.alt;
         finalComponentProps.width = data.width ?? definition.defaultProps.width;
         finalComponentProps.height = data.height ?? definition.defaultProps.height;
         finalComponentProps.objectFit = data.objectFit ?? definition.defaultProps.objectFit;
 
-      } else { // For other component types
+      } else { 
         definition.properties.forEach(prop => {
           let formValue = data[prop.name];
           
           if (formValue === undefined || formValue === null) {
-              finalComponentProps[prop.name] = formValue; // Allow undefined/null to be set if intended
+              finalComponentProps[prop.name] = formValue; 
               return;
           }
 
@@ -178,7 +182,7 @@ const PropertyEditor: React.FC = () => {
             } else {
               finalComponentProps[prop.name] = (prop.defaultValue ?? 0);
             }
-          } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') { // Coercion for numeric selects
+          } else if (prop.type === 'select' && typeof prop.defaultValue === 'number') { 
             if (typeof formValue === 'string') {
               const numVal = parseInt(formValue, 10);
               finalComponentProps[prop.name] = isNaN(numVal) ? prop.defaultValue : numVal;
@@ -187,7 +191,7 @@ const PropertyEditor: React.FC = () => {
             } else {
               finalComponentProps[prop.name] = prop.defaultValue;
             }
-          } else { // For text, textarea, file (data URI string), etc.
+          } else { 
               finalComponentProps[prop.name] = formValue;
           }
         });
