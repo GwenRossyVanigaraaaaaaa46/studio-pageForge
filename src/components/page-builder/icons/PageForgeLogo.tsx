@@ -1,21 +1,23 @@
 import type React from 'react';
 
 const PageForgeLogo: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg
+    <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 24 24"
+    viewBox="0 0 64 64"
+    width="50"
+    height="50"
     fill="none"
     stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="12" y1="18" x2="12" y2="12" />
-    <line x1="9" y1="15" x2="15" y2="15" />
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round">
+    <rect x="8" y="12" width="40" height="48" rx="4" ry="4" fill="#E5E7EB" />
+        <path d="M16 4h40a4 4 0 0 1 4 4v40a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4z" fill="#FFF" />
+    <polyline points="56 4 56 16 44 16" />
+    <line x1="32" y1="28" x2="32" y2="44" />
+    <line x1="24" y1="36" x2="40" y2="36" />
   </svg>
+  
 );
 
 export default PageForgeLogo;

@@ -83,8 +83,7 @@ const FormField: React.FC<Pick<FormFieldProps, 'property' | 'control'>> = ({ pro
                       field.onChange('');
                     }
                   }}
-                  name={field.name}
-  ref={field.ref}
+                  name={field.name} ref={field.ref}
                 />
               );
             default:

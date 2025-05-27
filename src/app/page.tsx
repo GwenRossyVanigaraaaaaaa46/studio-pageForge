@@ -23,8 +23,8 @@ const PageLayout = () => {
     <div className="flex flex-col h-screen bg-background text-foreground">
       <header className="h-14 border-b border-border flex items-center justify-between px-6 shadow-sm bg-card">
         <div className="flex items-center">
-          <PageForgeLogo className="h-8 w-8 text-primary mr-3" />
-          <h1 className="text-2xl font-bold text-primary">PageForge</h1>
+          <PageForgeLogo className="h-8 w-8 text-primary mr-4" />
+          <h1 className="text-2xl font-bold text-primary ml-3">PageForge</h1>
         </div>
         <div className="flex items-center space-x-2">
           <Button variant="outline">
