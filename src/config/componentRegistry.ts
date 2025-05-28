@@ -4,8 +4,8 @@ import HeaderElement from '@/components/page-builder/elements/HeaderElement';
 import TextElement from '@/components/page-builder/elements/TextElement';
 import ImageElement from '@/components/page-builder/elements/ImageElement';
 import DescriptionBulletElement from '@/components/page-builder/elements/DescriptionBulletElement';
-import ButtonElement from '@/components/page-builder/elements/ButtonElement';
-import { Heading1, Type, Image as ImageIcon, ListChecks, MousePointerSquareDashed } from 'lucide-react'; // Changed to MousePointerSquareDashed
+// Removed: import ButtonElement from '@/components/page-builder/elements/ButtonElement';
+import { Heading1, Type, Image as ImageIcon, ListChecks } from 'lucide-react'; // Removed MousePointerSquareDashed
 
 export const COMPONENT_REGISTRY: ComponentDefinition[] = [
   {
@@ -93,7 +93,7 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     name: 'Image',
     icon: ImageIcon,
     defaultProps: {
-      src: '', // Will use internal placeholder if empty
+      src: '', 
       alt: 'My Awesome Image',
       width: 600,
       height: 400,
@@ -170,68 +170,5 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     ],
     component: DescriptionBulletElement,
   },
-  {
-    type: 'ButtonElement',
-    name: 'Button',
-    icon: MousePointerSquareDashed, // Changed to MousePointerSquareDashed
-    defaultProps: {
-      buttonText: 'Click Me',
-      variant: 'default',
-      size: 'default',
-      linkUrl: '',
-      linkOpenInNewTab: true,
-      alignment: 'center',
-    },
-    properties: [
-      { name: 'buttonText', label: 'Button Text', type: 'text', defaultValue: 'Click Me', placeholder: 'Enter button text' },
-      {
-        name: 'variant',
-        label: 'Variant',
-        type: 'select',
-        defaultValue: 'default',
-        options: [
-          { label: 'Default', value: 'default' },
-          { label: 'Destructive', value: 'destructive' },
-          { label: 'Outline', value: 'outline' },
-          { label: 'Secondary', value: 'secondary' },
-          { label: 'Ghost', value: 'ghost' },
-          { label: 'Link', value: 'link' },
-        ],
-      },
-      {
-        name: 'size',
-        label: 'Size',
-        type: 'select',
-        defaultValue: 'default',
-        options: [
-          { label: 'Default', value: 'default' },
-          { label: 'Small', value: 'sm' },
-          { label: 'Large', value: 'lg' },
-        ],
-      },
-      { name: 'linkUrl', label: 'Link URL (Optional)', type: 'url', defaultValue: '', placeholder: 'https://example.com' },
-      {
-        name: 'linkOpenInNewTab',
-        label: 'Open Link in New Tab',
-        type: 'select',
-        defaultValue: true, 
-        options: [
-          { label: 'Yes', value: 'true' }, 
-          { label: 'No', value: 'false' },  
-        ],
-      },
-      {
-        name: 'alignment',
-        label: 'Alignment',
-        type: 'select',
-        defaultValue: 'center',
-        options: [
-          { label: 'Left', value: 'left' },
-          { label: 'Center', value: 'center' },
-          { label: 'Right', value: 'right' },
-        ],
-      },
-    ],
-    component: ButtonElement,
-  },
+  // ButtonElement definition removed
 ];
