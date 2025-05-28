@@ -3,8 +3,8 @@
 
 import type React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-// Changed import to a named export from the directory's index file
-import { materialLight } from 'react-syntax-highlighter/dist/styles/prism'; 
+// Corrected import path for react-syntax-highlighter v15.8.0 styles
+import { materialLight } from 'react-syntax-highlighter/dist/esm/styles/prism'; 
 
 interface EmbedCodeElementProps {
   code: string;
@@ -44,3 +44,4 @@ const EmbedCodeElement: React.FC<EmbedCodeElementProps> = ({ code, language }) =
 };
 
 export default EmbedCodeElement;
+
