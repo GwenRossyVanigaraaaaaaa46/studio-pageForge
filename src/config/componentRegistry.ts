@@ -4,7 +4,8 @@ import HeaderElement from '@/components/page-builder/elements/HeaderElement';
 import TextElement from '@/components/page-builder/elements/TextElement';
 import ImageElement from '@/components/page-builder/elements/ImageElement';
 import DescriptionBulletElement from '@/components/page-builder/elements/DescriptionBulletElement';
-import { Heading1, Type, Image as ImageIcon, ListChecks, Link2 } from 'lucide-react';
+import EmbedCodeElement from '@/components/page-builder/elements/EmbedCodeElement';
+import { Heading1, Type, Image as ImageIcon, ListChecks, Code2 } from 'lucide-react';
 
 export const COMPONENT_REGISTRY: ComponentDefinition[] = [
   {
@@ -92,7 +93,7 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     name: 'Image',
     icon: ImageIcon,
     defaultProps: {
-      src: '', 
+      src: '',
       alt: 'My Awesome Image',
       width: 600,
       height: 400,
@@ -168,5 +169,23 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
       },
     ],
     component: DescriptionBulletElement,
+  },
+  {
+    type: 'EmbedCodeElement',
+    name: 'Embed Code',
+    icon: Code2,
+    defaultProps: {
+      htmlCode: '<!-- Your HTML code here -->\n<style>\n/* Your CSS here */\n</style>\n<script>\n// Your JavaScript here\n</script>',
+    },
+    properties: [
+      {
+        name: 'htmlCode',
+        label: 'HTML/CSS/JS Code',
+        type: 'textarea',
+        defaultValue: '<!-- Your HTML code here -->\n<style>\n/* Your CSS here */\n</style>\n<script>\n// Your JavaScript here\n</script>',
+        placeholder: 'Paste your HTML, style tags, and script tags here.',
+      },
+    ],
+    component: EmbedCodeElement,
   },
 ];
