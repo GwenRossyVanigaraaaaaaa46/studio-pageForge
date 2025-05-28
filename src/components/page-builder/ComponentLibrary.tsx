@@ -28,7 +28,7 @@ const ComponentLibrary: React.FC = () => {
                 <Button
                   key={definition.type}
                   variant="outline"
-                  className="w-full justify-start text-left h-auto py-3 transition-all duration-150 ease-in-out hover:shadow-md hover:border-primary group"
+                  className="w-full justify-start text-left h-auto py-3 transition-all duration-150 ease-in-out hover:shadow-md hover:border-primary group hover:bg-secondary"
                   onClick={() => addComponent(definition.type)}
                   aria-label={`Add ${definition.name} component`}
                 >
