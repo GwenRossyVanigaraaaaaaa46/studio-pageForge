@@ -4,8 +4,8 @@ import HeaderElement from '@/components/page-builder/elements/HeaderElement';
 import TextElement from '@/components/page-builder/elements/TextElement';
 import ImageElement from '@/components/page-builder/elements/ImageElement';
 import DescriptionBulletElement from '@/components/page-builder/elements/DescriptionBulletElement';
-import EmbedCodeElement from '@/components/page-builder/elements/EmbedCodeElement';
-import { Heading1, Type, Image as ImageIcon, ListChecks, Code2 } from 'lucide-react';
+// EmbedCodeElement and Code2 icon are removed
+import { Heading1, Type, Image as ImageIcon, ListChecks } from 'lucide-react';
 
 export const COMPONENT_REGISTRY: ComponentDefinition[] = [
   {
@@ -170,41 +170,6 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     ],
     component: DescriptionBulletElement,
   },
-  {
-    type: 'EmbedCodeElement',
-    name: 'Embed Code',
-    icon: Code2,
-    defaultProps: {
-      code: '<h1>Hello World!</h1>\n<p>This is HTML. Change language to see syntax highlighting.</p>',
-      language: 'html',
-    },
-    properties: [
-      {
-        name: 'code',
-        label: 'Code',
-        type: 'textarea',
-        defaultValue: '<h1>Hello World!</h1>',
-        placeholder: 'Paste your code here.',
-      },
-      {
-        name: 'language',
-        label: 'Language',
-        type: 'select',
-        defaultValue: 'html',
-        options: [
-          { label: 'HTML (renders directly)', value: 'html' },
-          { label: 'JavaScript', value: 'javascript' },
-          { label: 'CSS', value: 'css' },
-          { label: 'JSON', value: 'json' },
-          { label: 'Python', value: 'python' },
-          { label: 'JSX', value: 'jsx' },
-          { label: 'TypeScript', value: 'typescript' },
-          { label: 'TSX', value: 'tsx' },
-          { label: 'Markdown', value: 'markdown'},
-          { label: 'Text', value: 'text' },
-        ],
-      },
-    ],
-    component: EmbedCodeElement,
-  },
+  // EmbedCodeElement definition removed
 ];
+
