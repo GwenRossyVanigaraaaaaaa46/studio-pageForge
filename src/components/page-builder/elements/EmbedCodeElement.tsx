@@ -3,9 +3,8 @@
 
 import type React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-// Attempting to import materialLight by explicitly targeting the ESM index.js file.
-// This is based on the structure of react-syntax-highlighter@^15.8.0.
-import { materialLight } from 'react-syntax-highlighter/dist/esm/styles/prism/index.js';
+// Change to named import from the CJS styles directory for react-syntax-highlighter@^15.8.0.
+import { materialLight } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 interface EmbedCodeElementProps {
   code: string;
