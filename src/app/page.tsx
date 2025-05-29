@@ -7,7 +7,7 @@ import Canvas from '@/components/page-builder/Canvas';
 import PropertyEditor from '@/components/page-builder/PropertyEditor';
 import PageForgeLogo from '@/components/page-builder/icons/PageForgeLogo';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PlusCircle, Eye, ChevronLeft, ChevronRight, FileCog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Inner component to consume context for panel visibility
@@ -39,17 +39,29 @@ const PageLayout = () => {
       </header>
 
       <main className="flex flex-1 overflow-hidden">
+        {/* Left Panel: Component Library */}
         <div className={cn(
           "h-full bg-card border-r border-border flex transition-all duration-300 ease-in-out",
-          "hidden md:flex", 
+          "hidden md:flex",
           isComponentLibraryOpen ? "w-72" : "w-12"
         )}>
           <div className={cn(
-            "flex-grow overflow-hidden", 
-            "transition-all duration-300 ease-in-out", 
+            "flex flex-col flex-grow overflow-hidden", // Changed to flex-col
+            "transition-all duration-300 ease-in-out",
             isComponentLibraryOpen ? "w-auto opacity-100" : "w-0 opacity-0"
           )}>
-            {isComponentLibraryOpen && <ComponentLibrary />}
+            {isComponentLibraryOpen && (
+              <div className="flex flex-col h-full">
+                <div className="flex-grow overflow-auto"> {/* Wrapper for ComponentLibrary for scrolling */}
+                  <ComponentLibrary />
+                </div>
+                <div className="p-4 border-t border-border flex-shrink-0">
+                  <Button variant="ghost" className="w-full justify-start bg-muted hover:bg-muted/90 text-primary font-medium">
+                    <FileCog className="mr-3 h-5 w-5" /> Manage Post
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <div className={cn(
               "flex-shrink-0 flex items-center justify-center",
@@ -67,30 +79,32 @@ const PageLayout = () => {
           </div>
         </div>
 
+        {/* Center Panel: Canvas */}
         <section className="flex-1 h-full overflow-y-auto bg-background/50">
           <Canvas />
         </section>
 
+        {/* Right Panel: Property Editor */}
         <div className={cn(
           "h-full bg-card border-l border-border flex flex-row-reverse transition-all duration-300 ease-in-out",
-          "hidden lg:flex", 
-          isPropertyEditorPanelOpen ? "w-80" : "w-12" // Use context state here
+          "hidden lg:flex",
+          isPropertyEditorPanelOpen ? "w-80" : "w-12"
         )}>
           <div className={cn(
             "flex-grow overflow-hidden",
             "transition-all duration-300 ease-in-out",
-            isPropertyEditorPanelOpen ? "w-auto opacity-100" : "w-0 opacity-0" // And here
+            isPropertyEditorPanelOpen ? "w-auto opacity-100" : "w-0 opacity-0"
           )}>
-            {isPropertyEditorPanelOpen && <PropertyEditor />} 
+            {isPropertyEditorPanelOpen && <PropertyEditor />}
           </div>
           <div className={cn(
               "flex-shrink-0 flex items-center justify-center",
-              isPropertyEditorPanelOpen ? "w-12" : "w-full h-full" // And here
+              isPropertyEditorPanelOpen ? "w-12" : "w-full h-full"
           )}>
             <Button
               variant="ghost"
               size="icon"
-              onClick={togglePropertyEditorPanel} // Use context toggle function
+              onClick={togglePropertyEditorPanel}
               className="h-10 w-10 rounded-md hover:bg-muted"
               aria-label={isPropertyEditorPanelOpen ? "Collapse Property Editor" : "Expand Property Editor"}
             >
