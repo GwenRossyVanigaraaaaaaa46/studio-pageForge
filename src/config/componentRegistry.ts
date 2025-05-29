@@ -4,8 +4,8 @@ import HeaderElement from '@/components/page-builder/elements/HeaderElement';
 import TextElement from '@/components/page-builder/elements/TextElement';
 import ImageElement from '@/components/page-builder/elements/ImageElement';
 import DescriptionBulletElement from '@/components/page-builder/elements/DescriptionBulletElement';
-// Removed: import ButtonElement from '@/components/page-builder/elements/ButtonElement';
-import { Heading1, Type, Image as ImageIcon, ListChecks } from 'lucide-react'; // Removed MousePointerSquareDashed
+import AiTextGeneratorElement from '@/components/page-builder/elements/AiTextGeneratorElement'; // Added
+import { Heading1, Type, Image as ImageIcon, ListChecks, Wand2 } from 'lucide-react'; // Added Wand2
 
 export const COMPONENT_REGISTRY: ComponentDefinition[] = [
   {
@@ -170,5 +170,38 @@ export const COMPONENT_REGISTRY: ComponentDefinition[] = [
     ],
     component: DescriptionBulletElement,
   },
-  // ButtonElement definition removed
+  {
+    type: 'AiTextGeneratorElement',
+    name: 'AI Text Generator',
+    icon: Wand2,
+    defaultProps: {
+      userProvidedPrompt: 'e.g., Write a paragraph about the benefits of learning Next.js for web development.',
+      aiGeneratedText: '',
+    },
+    properties: [
+      { 
+        name: 'userProvidedPrompt', 
+        label: 'Your Prompt for AI', 
+        type: 'textarea', 
+        defaultValue: 'e.g., Write a paragraph about the benefits of learning Next.js for web development.',
+        placeholder: 'Enter your prompt for the AI here...' 
+      },
+      { 
+        name: 'aiActionButton', // Unique name for this action button property
+        label: 'Generate Text with AI', // This will be the button's text
+        type: 'ai_action_button',
+        promptSourceField: 'userProvidedPrompt', // Field to get prompt from
+        actionTargetField: 'aiGeneratedText',   // Field to update with AI result
+        buttonText: 'Generate Text with AI ✨' // Explicit button text
+      },
+      { 
+        name: 'aiGeneratedText', 
+        label: 'AI Generated Text', 
+        type: 'textarea', 
+        defaultValue: '', 
+        placeholder: 'AI generated text will appear here after generation.' 
+      },
+    ],
+    component: AiTextGeneratorElement,
+  }
 ];
