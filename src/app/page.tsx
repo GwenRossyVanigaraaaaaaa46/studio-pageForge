@@ -6,18 +6,35 @@ import ComponentLibrary from '@/components/page-builder/ComponentLibrary';
 import Canvas from '@/components/page-builder/Canvas';
 import PropertyEditor from '@/components/page-builder/PropertyEditor';
 import PageForgeLogo from '@/components/page-builder/icons/PageForgeLogo';
+import ManagePostView from '@/components/page-builder/ManagePostView'; // Added
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Eye, ChevronLeft, ChevronRight, FileCog } from 'lucide-react';
+import { PlusCircle, Eye, ChevronLeft, ChevronRight, FileCog, Library, Settings } from 'lucide-react'; // Added Library, Settings
 import { cn } from '@/lib/utils';
 
 // Inner component to consume context for panel visibility
 const PageLayout = () => {
-  const { isPropertyEditorPanelOpen, togglePropertyEditorPanel } = usePageBuilder();
-  const [isComponentLibraryOpen, setIsComponentLibraryOpen] = useState(true);
+  const { 
+    isPropertyEditorPanelOpen, 
+    togglePropertyEditorPanel,
+    currentViewInLeftPanel, // Added
+    setCurrentViewInLeftPanel // Added
+  } = usePageBuilder();
+  const [isComponentLibraryOpen, setIsComponentLibraryOpen] = useState(true); // This controls the entire left panel
 
-  const toggleComponentLibrary = () => {
+  const toggleComponentLibraryPanel = () => { // Renamed for clarity
     setIsComponentLibraryOpen(!isComponentLibraryOpen);
   };
+
+  const handleManagePostClick = () => {
+    setCurrentViewInLeftPanel('managePost');
+    if (!isComponentLibraryOpen) {
+      setIsComponentLibraryOpen(true); // Ensure panel is open if we switch to manage posts
+    }
+  };
+  
+  const leftPanelTitle = currentViewInLeftPanel === 'components' ? 'Add Components' : 'Manage Posts';
+  const LeftPanelIcon = currentViewInLeftPanel === 'components' ? PlusCircle : Settings;
+
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
@@ -39,26 +56,50 @@ const PageLayout = () => {
       </header>
 
       <main className="flex flex-1 overflow-hidden">
-        {/* Left Panel: Component Library */}
+        {/* Left Panel: Component Library or Manage Posts */}
         <div className={cn(
           "h-full bg-card border-r border-border flex transition-all duration-300 ease-in-out",
           "hidden md:flex",
           isComponentLibraryOpen ? "w-72" : "w-12"
         )}>
           <div className={cn(
-            "flex flex-col flex-grow overflow-hidden", // Changed to flex-col
+            "flex flex-col flex-grow overflow-hidden",
             "transition-all duration-300 ease-in-out",
             isComponentLibraryOpen ? "w-auto opacity-100" : "w-0 opacity-0"
           )}>
             {isComponentLibraryOpen && (
               <div className="flex flex-col h-full">
-                <div className="flex-grow overflow-auto"> {/* Wrapper for ComponentLibrary for scrolling */}
-                  <ComponentLibrary />
+                {/* Dynamic Header for Left Panel */}
+                 <div className="p-4 border-b flex-shrink-0">
+                    <h2 className="text-lg font-semibold flex items-center">
+                      <LeftPanelIcon className="mr-2 h-5 w-5 text-primary" />
+                      {leftPanelTitle}
+                    </h2>
+                  </div>
+
+                <div className="flex-grow overflow-auto">
+                  {currentViewInLeftPanel === 'components' ? <ComponentLibrary /> : <ManagePostView />}
                 </div>
+                
+                {/* Footer button to switch to Manage Posts or Components */}
                 <div className="p-4 border-t border-border flex-shrink-0">
-                  <Button variant="ghost" className="w-full justify-start bg-muted hover:bg-muted/90 text-primary font-medium">
-                    <FileCog className="mr-3 h-5 w-5" /> Manage Post
-                  </Button>
+                  {currentViewInLeftPanel === 'components' ? (
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start bg-muted hover:bg-muted/90 text-primary font-medium"
+                      onClick={handleManagePostClick}
+                    >
+                      <FileCog className="mr-3 h-5 w-5" /> Manage Posts
+                    </Button>
+                  ) : (
+                     <Button 
+                      variant="ghost" 
+                      className="w-full justify-start bg-muted hover:bg-muted/90 text-primary font-medium"
+                      onClick={() => setCurrentViewInLeftPanel('components')}
+                    >
+                      <Library className="mr-3 h-5 w-5" /> Component Library
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -70,9 +111,9 @@ const PageLayout = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={toggleComponentLibrary}
+              onClick={toggleComponentLibraryPanel}
               className="h-10 w-10 rounded-md hover:bg-muted"
-              aria-label={isComponentLibraryOpen ? "Collapse Component Library" : "Expand Component Library"}
+              aria-label={isComponentLibraryOpen ? "Collapse Left Panel" : "Expand Left Panel"}
             >
               {isComponentLibraryOpen ? <ChevronLeft className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
             </Button>
