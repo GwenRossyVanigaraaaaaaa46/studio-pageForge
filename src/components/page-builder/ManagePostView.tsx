@@ -1,3 +1,4 @@
+
 "use client";
 
 import type React from 'react';
@@ -17,7 +18,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Keep for delete dialog
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,13 +45,11 @@ const ManagePostView: React.FC = () => {
     const title = window.prompt("Enter title for the new post:", "New Post");
     if (title) {
       createPost(title);
-      // Context createPost will switch view to 'components'
     }
   };
 
   const handleEditContent = (postId: string) => {
     selectPost(postId);
-    // Context selectPost will switch view to 'components'
   };
 
   const openPostSettingsDialog = (postId: string) => {
@@ -66,7 +65,7 @@ const ManagePostView: React.FC = () => {
     if (editingPostId) {
       updatePostTitle(editingPostId, postTitleInput);
       updatePostStatus(editingPostId, postStatusInput);
-      setEditingPostId(null); // Close dialog
+      setEditingPostId(null); 
     }
   };
 
@@ -82,11 +81,13 @@ const ManagePostView: React.FC = () => {
           New Post
         </Button>
       </div>
-      <ScrollArea className="flex-grow p-4">
+      <ScrollArea className="flex-grow"> {/* Removed p-4 from here */}
         {posts.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No posts yet. Create one to get started!</p>
+          <p className="text-muted-foreground text-center py-8 px-4"> {/* Added px-4 here for horizontal padding */}
+            No posts yet. Create one to get started!
+          </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3 p-4"> {/* Added p-4 here for padding around the list of cards */}
             {posts.map((post) => (
               <Card key={post.id} className={`transition-all ${activePostId === post.id ? 'border-primary shadow-lg' : 'hover:shadow-md'}`}>
                 <CardHeader className="pb-2 pt-4 px-4">
@@ -101,7 +102,6 @@ const ManagePostView: React.FC = () => {
                   </p>
                 </CardHeader>
                 <CardFooter className="px-4 pt-2 pb-4 flex justify-end space-x-2">
-                   {/* Changed from AlertDialogTrigger to a regular Button */}
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openPostSettingsDialog(post.id)}>
                       <Settings2 className="h-4 w-4" />
                       <span className="sr-only">Post Settings</span>
@@ -111,7 +111,7 @@ const ManagePostView: React.FC = () => {
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive-outline" size="icon" className="h-7 w-7">
+                      <Button variant="outline" size="icon" className="h-7 w-7 text-destructive border-destructive hover:text-destructive hover:bg-destructive/5">
                         <Trash2 className="h-4 w-4" />
                          <span className="sr-only">Delete Post</span>
                       </Button>
@@ -136,8 +136,6 @@ const ManagePostView: React.FC = () => {
         )}
       </ScrollArea>
       
-      {/* Dialog for Editing Post Settings (Title & Status) */}
-      {/* Wrapped AlertDialogContent with AlertDialog and controlled by `open` prop */}
       <AlertDialog open={!!editingPostId} onOpenChange={(isOpen) => { if (!isOpen) setEditingPostId(null); }}>
         <AlertDialogContent className="sm:max-w-[425px]">
           <AlertDialogHeader>
@@ -156,7 +154,7 @@ const ManagePostView: React.FC = () => {
                 value={postTitleInput}
                 onChange={(e) => setPostTitleInput(e.target.value)}
                 className="col-span-3"
-                disabled={!editingPostId} // Disable if no post is being edited
+                disabled={!editingPostId} 
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -166,7 +164,7 @@ const ManagePostView: React.FC = () => {
               <Select 
                 value={postStatusInput} 
                 onValueChange={(value: 'draft' | 'published') => setPostStatusInput(value)}
-                disabled={!editingPostId} // Disable if no post is being edited
+                disabled={!editingPostId} 
               >
                   <SelectTrigger className="col-span-3">
                     <SelectValue placeholder="Select status" />
@@ -190,25 +188,3 @@ const ManagePostView: React.FC = () => {
 
 export default ManagePostView;
 
-// Add destructive-outline variant to Button if it doesn't exist
-// For now, this will use default destructive styling from shadcn if destructive-outline is not custom defined.
-// Add to components/ui/button.tsx if needed:
-// destructive_outline: "border border-destructive text-destructive hover:bg-destructive/10",
-// Or just use variant="outline" and className="text-destructive border-destructive hover:bg-destructive/10"
-
-// For the delete button, to achieve "destructive-outline":
-// variant="outline" className="text-destructive border-destructive hover:bg-destructive/10 hover:text-destructive"
-// This is currently how it's in the file: <Button variant="destructive-outline"... >
-// If `destructive-outline` is not a defined variant in `buttonVariants` (components/ui/button.tsx),
-// it will fall back to default styling. The image shows it as red outline.
-// To ensure it works as intended, I will modify the delete button to:
-// variant="outline" className="text-destructive border-destructive hover:text-destructive hover:bg-destructive/5"
-// The current `Button variant="destructive-outline"` is fine if that variant is defined in `button.tsx`.
-// The current code uses `<Button variant="destructive-outline" size="icon" className="h-7 w-7">` for the delete trigger.
-// This should be fine if `destructive-outline` is a known variant. If not, it might render as default.
-// Assuming `destructive-outline` is or will be handled.
-
-// The provided code already had `AlertDialogTrigger` for delete.
-// The Settings button was the one that was an `AlertDialogTrigger` but its `AlertDialogContent` was orphaned.
-// The fix is to make settings button a normal button and wrap the orphaned content.
-// This has been addressed in the code above.
