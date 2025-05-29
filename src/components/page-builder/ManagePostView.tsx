@@ -100,7 +100,7 @@ const ManagePostView: React.FC = () => {
                     Updated: {format(new Date(post.updatedAt), 'MMM d, yyyy HH:mm')}
                   </p>
                 </CardHeader>
-                <CardFooter className="px-4 pb-3 pt-2 flex justify-end space-x-2">
+                <CardFooter className="px-4 pt-2 pb-4 flex justify-end space-x-2">
                    {/* Changed from AlertDialogTrigger to a regular Button */}
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openPostSettingsDialog(post.id)}>
                       <Settings2 className="h-4 w-4" />
